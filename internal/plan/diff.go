@@ -22,6 +22,7 @@ const (
 	ReasonUnmanaged  = "not created by promptstor"
 	ReasonConflict   = "shared file conflict: "
 	ReasonSymlinked  = "symlinked -> "
+	ReasonHardLinked = "hard link: PromptStor would break the link"
 	reasonNotRegular = "not a regular file"
 )
 
@@ -207,6 +208,15 @@ func planFile(draft *fileDraft, m *manifest.Manifest, opt Options) FileChange {
 	e := editor{change: &c, manifest: m, adopt: slices.Contains(opt.Adopt, c.Path), doc: slices.Clone(before), exists: exists}
 	if reason := e.run(); reason != "" {
 		return blocked(c, reason)
+	}
+	if c.Op != OpNoop && !c.ReplaceLink {
+		entry, err := fsx.Inspect(c.Path)
+		if err != nil {
+			return blocked(c, err.Error())
+		}
+		if entry.HardLinked {
+			return blocked(c, ReasonHardLinked)
+		}
 	}
 	return c
 }

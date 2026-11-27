@@ -15,6 +15,7 @@ type Entry struct {
 	Exists     bool
 	IsLink     bool
 	IsDir      bool
+	HardLinked bool
 	LinkTarget string
 	Mode       fs.FileMode
 }
@@ -27,7 +28,7 @@ func Inspect(path string) (Entry, error) {
 	if err != nil {
 		return Entry{}, fmt.Errorf("inspect %s: %w", path, err)
 	}
-	entry := Entry{Exists: true, IsDir: info.IsDir(), Mode: info.Mode()}
+	entry := Entry{Exists: true, IsDir: info.IsDir(), Mode: info.Mode(), HardLinked: hardLinked(info)}
 	if info.Mode()&fs.ModeSymlink != 0 {
 		entry.IsLink = true
 		if entry.LinkTarget, err = os.Readlink(path); err != nil {
