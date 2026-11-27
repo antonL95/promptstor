@@ -43,7 +43,7 @@ func load(root string) (project, error) {
 		return project{}, err
 	}
 	dir := filepath.Join(root, layerDir)
-	items, err := library.LoadLayer(dir, library.LayerProject, library.LoadOptions{})
+	items, err := library.LoadLayer(dir, library.LayerProject, library.LoadOptions{AssignTemporaryIDs: true})
 	if err != nil {
 		return project{}, fmt.Errorf("load %s: %w", dir, err)
 	}

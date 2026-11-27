@@ -197,10 +197,6 @@ func TestUnusableLayerIsAnError(t *testing.T) {
 			},
 			"symlinked",
 		},
-		"item without an id": {
-			func(t *testing.T, root string) { write(t, root, ".promptstor/rules/new.md", "A rule.\n") },
-			"has no promptstor id",
-		},
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {

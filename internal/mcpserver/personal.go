@@ -17,12 +17,26 @@ func (s *server) personalDir() (string, []library.Item, error) {
 	return dir, items, err
 }
 
+func (s *server) storedID(id string) (library.ID, error) {
+	renamed, _, err := s.e.WriteMissingIDs("")
+	if err != nil {
+		return "", err
+	}
+	if stored, found := renamed[library.ID(id)]; found {
+		return stored, nil
+	}
+	return library.ID(id), nil
+}
+
 func (s *server) upsertPersonal(in itemInput) (any, error) {
+	id, err := s.storedID(in.ID)
+	if err != nil {
+		return nil, err
+	}
 	dir, personal, err := s.personalDir()
 	if err != nil {
 		return nil, err
 	}
-	id := library.ID(in.ID)
 	current := find(personal, id)
 	base := current
 	if id != "" && current == nil {
@@ -51,6 +65,10 @@ func (s *server) upsertPersonal(in itemInput) (any, error) {
 }
 
 func (s *server) removePersonal(in removeInput) (any, error) {
+	id, err := s.storedID(in.ID)
+	if err != nil {
+		return nil, err
+	}
 	dir, personal, err := s.personalDir()
 	if err != nil {
 		return nil, err
@@ -59,7 +77,6 @@ func (s *server) removePersonal(in removeInput) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	id := library.ID(in.ID)
 	before, _, err := s.e.Library(root)
 	if err != nil {
 		return nil, err

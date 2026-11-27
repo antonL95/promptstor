@@ -16,6 +16,11 @@ func (d *doctor) storeLibrary(cands []*candidate) error {
 	existing := map[string]library.ID{}
 	used := map[string]bool{}
 	loaded := map[string]bool{}
+	if !d.opt.DryRun {
+		if _, _, err := d.e.WriteMissingIDs(d.opt.Project); err != nil {
+			return err
+		}
+	}
 	for _, c := range keptCandidates(cands) {
 		layer := scopeLayer(c.target.Scope)
 		dir, err := d.layerDir(layer)
@@ -24,7 +29,7 @@ func (d *doctor) storeLibrary(cands []*candidate) error {
 		}
 		if !loaded[dir] {
 			loaded[dir] = true
-			items, err := library.LoadLayer(dir, layer, library.LoadOptions{})
+			items, err := library.LoadLayer(dir, layer, library.LoadOptions{AssignTemporaryIDs: true})
 			if err != nil {
 				return err
 			}

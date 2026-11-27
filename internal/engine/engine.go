@@ -3,7 +3,6 @@ package engine
 import (
 	"cmp"
 	"fmt"
-	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -24,6 +23,7 @@ import (
 const (
 	projectLayerDir = ".promptstor"
 	lockWait        = 5 * time.Second
+	keptSnapshots   = 100
 )
 
 type Engine struct {
@@ -36,6 +36,7 @@ type Engine struct {
 	Now      func() time.Time
 	Builtins []library.Item
 	Notices  []adapter.Unsupported
+	Warn     func(error)
 }
 
 type Plan struct {
@@ -80,22 +81,9 @@ func (e Engine) scoped(projectRoot string) (scopedLibrary, error) {
 }
 
 func (e Engine) layers(projectRoot string) ([]library.LayerItems, error) {
-	sources := []struct {
-		dir   string
-		layer library.Layer
-	}{
-		{e.Env.LibraryDir(), library.LayerPersonal},
-		{e.Env.DeviceDir(), library.LayerDevice},
-	}
-	if projectRoot != "" {
-		sources = append(sources, struct {
-			dir   string
-			layer library.Layer
-		}{filepath.Join(projectRoot, projectLayerDir), library.LayerProject})
-	}
 	var layers []library.LayerItems
-	for _, source := range sources {
-		items, err := library.LoadLayer(source.dir, source.layer, library.LoadOptions{})
+	for _, source := range e.layerSources(projectRoot) {
+		items, err := library.LoadLayer(source.dir, source.layer, library.LoadOptions{AssignTemporaryIDs: true})
 		if err != nil {
 			return nil, fmt.Errorf("load %s layer: %w", source.layer, err)
 		}
@@ -124,13 +112,27 @@ func (e Engine) Plan(projectRoot string, opt plan.Options) (Plan, error) {
 }
 
 func (e Engine) Sync(projectRoot string, opt plan.Options) (plan.ApplyResult, Plan, error) {
+	_, notes, err := e.WriteMissingIDs(projectRoot)
+	if err != nil {
+		return plan.ApplyResult{}, Plan{}, err
+	}
+	e.Notices = slices.Concat(e.Notices, notes)
 	p, m, err := e.plan(projectRoot, opt)
 	if err != nil {
 		return plan.ApplyResult{}, p, err
 	}
 	applier := plan.Applier{Now: e.now, LockWait: lockWait}
 	result, err := applier.Apply(p.Changes, e.Backups(), &m, e.Env.ManifestPath(), e.Env.LockPath())
+	if err == nil {
+		e.pruneSnapshots()
+	}
 	return result, p, err
+}
+
+func (e Engine) pruneSnapshots() {
+	if err := e.Backups().Prune(keptSnapshots); err != nil && e.Warn != nil {
+		e.Warn(err)
+	}
 }
 
 func (e Engine) Backups() backup.Store {
@@ -207,6 +209,7 @@ func (e Engine) Restore(id, tool string, dryRun bool) (backup.RestorePlan, error
 	if err := e.reconcile(paths); err != nil {
 		return restored, fmt.Errorf("reconcile manifest after restore: %w", err)
 	}
+	e.pruneSnapshots()
 	return restored, nil
 }
 

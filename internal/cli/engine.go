@@ -41,7 +41,14 @@ func (d Deps) engineFor(cfg config.Config) (engine.Engine, error) {
 		Now:      d.Now,
 		Builtins: slices.Concat(d.Builtins, guards, d.registeredServer(cfg)),
 		Notices:  editGuardNotices(cfg),
+		Warn:     d.warnNotPruned,
 	}, nil
+}
+
+func (d Deps) warnNotPruned(err error) {
+	if d.Stderr != nil {
+		_, _ = fmt.Fprintf(d.Stderr, "warning: old snapshots were not pruned: %v\n", err)
+	}
 }
 
 func (d Deps) run(name string, args ...string) ([]byte, error) {

@@ -11,7 +11,7 @@ import (
 	"github.com/antonL95/promptstor/internal/fsx"
 )
 
-type LoadOptions struct{ AssignIDs bool }
+type LoadOptions struct{ AssignIDs, AssignTemporaryIDs bool }
 
 func LoadLayer(dir string, layer Layer, opt LoadOptions) ([]Item, error) {
 	dir, err := filepath.Abs(dir)
@@ -29,7 +29,7 @@ func LoadLayer(dir string, layer Layer, opt LoadOptions) ([]Item, error) {
 	for index := range items {
 		items[index].Layer = layer
 	}
-	if err := checkIDs(items, opt); err != nil {
+	if err := checkIDs(dir, items, opt); err != nil {
 		return nil, err
 	}
 	return items, assignIDs(dir, items)
@@ -151,14 +151,21 @@ func loadItem(dir string, l layout, slug string) (Item, bool, error) {
 	return item, true, nil
 }
 
-func checkIDs(items []Item, opt LoadOptions) error {
+func checkIDs(dir string, items []Item, opt LoadOptions) error {
 	sources := map[ID]string{}
-	for _, item := range items {
+	for index, item := range items {
 		if item.ID == "" {
-			if !opt.AssignIDs {
+			switch {
+			case opt.AssignIDs:
+				continue
+			case !opt.AssignTemporaryIDs:
 				return fmt.Errorf("%s: item has no %s id", item.Source, blockKey)
 			}
-			continue
+			temporary, err := temporaryID(dir, item)
+			if err != nil {
+				return err
+			}
+			item.ID, items[index].ID = temporary, temporary
 		}
 		if other, taken := sources[item.ID]; taken {
 			return fmt.Errorf("duplicate id %s in %s and %s", item.ID, other, item.Source)

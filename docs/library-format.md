@@ -57,7 +57,7 @@ In Markdown items, any other frontmatter key is kept with the item. What reaches
 
 | Key | Meaning |
 |-----|---------|
-| `id` | Required. A unique id for the item. |
+| `id` | A unique id for the item. Leave it out of a new file you write by hand. |
 | `order` | A number. Lower values come first among items of one kind. |
 | `targets` | `include` and `exclude` lists of tool ids. An empty `include` means every selected tool. |
 | `scope` | A list of file globs a rule applies to |
@@ -67,7 +67,13 @@ In Markdown items, any other frontmatter key is kept with the item. What reaches
 
 An unknown key in the block is an error.
 
-PromptStor assigns an id when it imports an item or creates one through its MCP server. When you write a file by hand, add the id yourself. PromptStor's own ids are `ps_` followed by 26 characters. Ids that start with `ps_builtin_` are reserved.
+PromptStor assigns an id when it imports an item or creates one through its MCP server. A file you write by hand does not need one, and does not need the `promptstor` block either.
+
+- A sync that writes, applying changes in `doctor`, and a change through the MCP server add the missing ids to your files. Adding an id rewrites the frontmatter or the YAML file. Comments there can be lost and keys can move. The body of a Markdown item stays as it is.
+- Everything that only reads (`sync --dry-run`, `doctor --dry-run`, `doctor --check`, `status`, `check --ci` and the MCP list, get, search and status tools) writes nothing. It uses a temporary id that starts with `ps_tmp_` and comes from the layer and the file path.
+- When a layer folder is reached through a symlink, PromptStor does not write ids into it and says so. Its items keep their temporary ids, so renaming such a file makes it a new item.
+
+PromptStor's own ids are `ps_` followed by 26 characters. Ids that start with `ps_builtin_` or `ps_tmp_` are reserved.
 
 The tool ids are `claude-code`, `codex`, `gemini-cli`, `antigravity`, `opencode`, `cursor` and `agents-md`. What each tool can express is listed in [adapters.md](adapters.md). PromptStor reports what a tool cannot express.
 

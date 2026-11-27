@@ -40,7 +40,7 @@ The first run finds your installed tools, asks which one is primary (its version
 
 ## Day to day
 
-Edit items in `~/.config/promptstor/library/` (see [library format](docs/library-format.md)), then sync.
+Edit items in `~/.config/promptstor/library/` (see [library format](docs/library-format.md)), then sync. A file you add by hand gets its id on the next sync.
 
 | Command | What it does |
 |---------|--------------|
@@ -74,7 +74,7 @@ promptstor restore <snapshot>
 - A restore makes folders match the snapshot, so files added to a backed up folder afterwards are removed. Run it with `--dry-run` first.
 - Every restore takes a snapshot of its own and prints how to undo it.
 - `--tool <id>` restores the files of one tool only.
-- Release 1 does not delete old snapshots.
+- After a sync or a restore, PromptStor keeps the newest 100 snapshots of changes and restores and deletes older ones. First run snapshots are always kept.
 
 Snapshots keep your configuration files whole, including secrets already in them. Credential files are never copied. See [privacy](docs/privacy.md) for the list and for where data is kept.
 
@@ -95,6 +95,7 @@ Snapshots keep your configuration files whole, including secrets already in them
 
 - Windows is best effort. It is not tested in CI, scheduled checks are not available there, and the GitHub Action supports Linux and macOS only.
 - There is no sync between machines yet, and no accounts or teams.
+- The macOS binaries are not signed or notarized. macOS can refuse to run one that you downloaded with a browser. The `curl` commands under Install avoid that.
 
 ## Development
 

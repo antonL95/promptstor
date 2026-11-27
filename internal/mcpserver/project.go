@@ -29,7 +29,7 @@ type projectChange struct {
 	id    library.ID
 	name  string
 	verb  string
-	apply func(layerDir string) (string, error)
+	apply func(layerDir string, id library.ID) (string, error)
 }
 
 func (c projectChange) message() string {
@@ -45,8 +45,8 @@ func (s *server) upsertProject(in upsertInput) (any, error) {
 	if id == "" {
 		id = library.NewID()
 	}
-	return s.changeProject(repo, projectChange{id: id, name: in.Item.Name, verb: verbUpdate, apply: func(dir string) (string, error) {
-		items, err := library.LoadLayer(dir, library.LayerProject, library.LoadOptions{})
+	return s.changeProject(repo, projectChange{id: id, name: in.Item.Name, verb: verbUpdate, apply: func(dir string, id library.ID) (string, error) {
+		items, err := library.LoadLayer(dir, library.LayerProject, library.LoadOptions{AssignTemporaryIDs: true})
 		if err != nil {
 			return "", err
 		}
@@ -64,7 +64,7 @@ func (s *server) removeProject(in removeInput) (any, error) {
 		return nil, err
 	}
 	id := library.ID(in.ID)
-	items, err := library.LoadLayer(filepath.Join(repo, projectLayerDir), library.LayerProject, library.LoadOptions{})
+	items, err := library.LoadLayer(filepath.Join(repo, projectLayerDir), library.LayerProject, library.LoadOptions{AssignTemporaryIDs: true})
 	if err != nil {
 		return nil, err
 	}
@@ -72,8 +72,8 @@ func (s *server) removeProject(in removeInput) (any, error) {
 	if current == nil {
 		return nil, fmt.Errorf("no item with id %s in the project layer", id)
 	}
-	return s.changeProject(repo, projectChange{id: id, name: current.Name, verb: verbRemove, apply: func(dir string) (string, error) {
-		items, err := library.LoadLayer(dir, library.LayerProject, library.LoadOptions{})
+	return s.changeProject(repo, projectChange{id: id, name: current.Name, verb: verbRemove, apply: func(dir string, id library.ID) (string, error) {
+		items, err := library.LoadLayer(dir, library.LayerProject, library.LoadOptions{AssignTemporaryIDs: true})
 		if err != nil {
 			return "", err
 		}
@@ -126,7 +126,15 @@ func (s *server) changeProject(repo string, c projectChange) (any, error) {
 }
 
 func (s *server) commitChange(worktree, branch string, c projectChange) (changeView, error) {
-	path, err := c.apply(filepath.Join(worktree, projectLayerDir))
+	layerDir := filepath.Join(worktree, projectLayerDir)
+	assigned, err := library.WriteMissingIDs(worktree, layerDir, library.LayerProject)
+	if err != nil {
+		return changeView{}, err
+	}
+	if stored, found := assigned.Renamed[c.id]; found {
+		c.id = stored
+	}
+	path, err := c.apply(layerDir, c.id)
 	if err != nil {
 		return changeView{}, err
 	}

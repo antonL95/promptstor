@@ -164,7 +164,39 @@ func (d *doctor) acknowledge(f drift.Finding, s *staged) error {
 	return nil
 }
 
+func (d *doctor) writeMissingIDs(acks []policy.Ack) error {
+	before, _, err := d.e.Library(d.opt.Project)
+	if err != nil {
+		return err
+	}
+	renamed, _, err := d.e.WriteMissingIDs(d.opt.Project)
+	if err != nil || len(renamed) == 0 {
+		return err
+	}
+	after, _, err := d.e.Library(d.opt.Project)
+	if err != nil {
+		return err
+	}
+	hashes := func(m library.Merged) map[library.ID]string {
+		byID := map[library.ID]string{}
+		for _, it := range m.Items {
+			byID[it.ID] = library.ContentHash(it)
+		}
+		return byID
+	}
+	old, current := hashes(before), hashes(after)
+	for i, ack := range acks {
+		if id, found := renamed[ack.ItemID]; found && ack.Hash == old[ack.ItemID] {
+			acks[i].ItemID, acks[i].Hash = id, current[id]
+		}
+	}
+	return nil
+}
+
 func (d *doctor) commit(s staged) error {
+	if err := d.writeMissingIDs(s.acks.List); err != nil {
+		return err
+	}
 	items := slices.Clone(s.items)
 	promoted, err := d.promote(s.grants)
 	if err != nil {

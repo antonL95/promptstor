@@ -20,6 +20,8 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+      - run: go vet ./...
+      - run: go test ./...
       - run: go run github.com/goreleaser/goreleaser/v2@v2.20.2 release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

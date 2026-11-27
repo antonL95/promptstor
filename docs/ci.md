@@ -27,7 +27,7 @@ tools:
 
 The tool IDs are `claude-code`, `codex`, `gemini-cli`, `antigravity`, `opencode`, `cursor` and `agents-md`. `AGENTS.md` is checked automatically when the other tools need it.
 
-Every item needs its `promptstor` id. The check never writes to the repository, so it does not assign missing ids.
+An item without a `promptstor` id is accepted. The check never writes to the repository, so it uses a temporary id for that item (see [library format](library-format.md)). A sync adds the missing ids. Commit them, especially before you acknowledge a limitation, because an entry in `acks.json` names the item by its id.
 
 A secret in an MCP server must be an environment reference such as `ref: env:EXAMPLE_TOKEN`. The generated files then hold a placeholder and never the value. A literal secret in a command, argument, URL, environment value or header fails the check, even when the committed files match. The line names the item and the field and never the value:
 
