@@ -44,6 +44,7 @@ type FileChange struct {
 type Options struct {
 	ReplaceSymlinks, Adopt []string
 	SharedState            []string
+	Keep                   []manifest.Entry
 }
 
 type SnapshotEntry struct {

@@ -65,7 +65,7 @@ func Diff(desired []Unit, m manifest.Manifest, tools []string, opt Options) ([]F
 		}
 	}
 	for _, e := range m.Entries {
-		if _, wanted := groups[unitKey{e.Path, e.Unit, e.Key}]; wanted {
+		if _, wanted := groups[unitKey{e.Path, e.Unit, e.Key}]; wanted || kept(opt.Keep, e) {
 			continue
 		}
 		remaining := slices.DeleteFunc(e.Tools(), func(tool string) bool { return slices.Contains(tools, tool) })
@@ -92,6 +92,12 @@ func Diff(desired []Unit, m manifest.Manifest, tools []string, opt Options) ([]F
 		changes = append(changes, planFile(draft, &m, opt))
 	}
 	return changes, nil
+}
+
+func kept(keep []manifest.Entry, e manifest.Entry) bool {
+	return slices.ContainsFunc(keep, func(k manifest.Entry) bool {
+		return k.Path == e.Path && k.Unit == e.Unit && k.Key == e.Key
+	})
 }
 
 func validate(desired []Unit) error {

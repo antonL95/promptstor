@@ -891,3 +891,24 @@ func TestWrittenUnitStillDeleted(t *testing.T) {
 		t.Error("written file kept")
 	}
 }
+
+func TestDiffKeepsEntriesListedInKeep(t *testing.T) {
+	env := home(t)
+	write(t, at(env, ".claude/skills/x/SKILL.md"), "skill\n")
+	held := unit(env, adapter.ClaudeCode, ".claude/skills/x/SKILL.md", manifest.UnitFile, "", "skill\n")
+	dropped := unit(env, adapter.ClaudeCode, ".claude/settings.json", manifest.UnitJSON, "/model", `"example-model"`)
+	var m manifest.Manifest
+	m.Put(entryFor(t, held))
+	m.Put(entryFor(t, dropped))
+
+	changes := diff(t, nil, m, []string{adapter.ClaudeCode}, plan.Options{Keep: []manifest.Entry{entryFor(t, held)}})
+
+	for _, c := range changes {
+		if c.Path == held.Path {
+			t.Errorf("kept entry planned: op %s removed %d", c.Op, len(c.Removed))
+		}
+	}
+	if c := only(t, changes, dropped.Path); len(c.Removed) != 1 {
+		t.Errorf("dropped entry not removed: %+v", c.Removed)
+	}
+}
