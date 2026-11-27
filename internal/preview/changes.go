@@ -1,4 +1,4 @@
-package cli
+package preview
 
 import (
 	"strings"
@@ -9,9 +9,9 @@ import (
 
 const secretNotShown = "(secret, not shown)\n"
 
-func describeChange(c plan.FileChange) string {
+func Change(c plan.FileChange) string {
 	if !mayHoldSecrets(c) {
-		return unifiedDiff(c.Path, c.Before, c.After)
+		return UnifiedDiff(c.Path, c.Before, c.After)
 	}
 	var out strings.Builder
 	out.WriteString("--- " + c.Path + "\n+++ " + c.Path + "\n")

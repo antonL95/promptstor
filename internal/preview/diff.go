@@ -1,4 +1,4 @@
-package cli
+package preview
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ type edit struct {
 	line string
 }
 
-func unifiedDiff(path string, before, after []byte) string {
+func UnifiedDiff(path string, before, after []byte) string {
 	edits := diffLines(splitLines(string(before)), splitLines(string(after)))
 	var out strings.Builder
 	fmt.Fprintf(&out, "--- %s\n+++ %s\n", path, path)
