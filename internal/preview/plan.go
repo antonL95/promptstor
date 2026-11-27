@@ -28,6 +28,9 @@ func Plan(out io.Writer, p engine.Plan, diffs bool) (int, error) {
 	for _, c := range p.Changes {
 		if c.Blocked == "" && c.Op != plan.OpNoop {
 			changing++
+			if c.EditedByHand {
+				w.printf("deleting a file edited by hand: %s\n", c.Path)
+			}
 			if diffs {
 				w.printf("%s", Change(c))
 			}

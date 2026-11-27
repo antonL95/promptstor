@@ -13,14 +13,15 @@ import (
 var errUnknownKind = errors.New("unknown unit kind")
 
 type editor struct {
-	change   *FileChange
-	manifest *manifest.Manifest
-	adopt    bool
-	doc      []byte
-	exists   bool
-	deleted  bool
-	record   []Unit
-	adopted  []Unit
+	change       *FileChange
+	manifest     *manifest.Manifest
+	adopt        bool
+	doc          []byte
+	exists       bool
+	deleted      bool
+	editedByHand bool
+	record       []Unit
+	adopted      []Unit
 }
 
 func (e *editor) run() string {
@@ -43,6 +44,9 @@ func (e *editor) remove(entry manifest.Entry) string {
 		return ""
 	}
 	if entry.Unit == manifest.UnitFile {
+		if current, err := manifest.Hash(manifest.UnitFile, e.doc); err != nil || current != entry.Hash {
+			e.editedByHand = true
+		}
 		e.deleted = true
 		e.doc = nil
 		return ""
@@ -111,6 +115,7 @@ func (e *editor) finish() {
 	if c.Op == OpNoop {
 		c.Record = e.record
 	}
+	c.EditedByHand = e.editedByHand && c.Op == OpDelete
 }
 
 func sameEntry(entry manifest.Entry, u Unit, hash string) bool {

@@ -41,6 +41,7 @@ type FileChange struct {
 	SharedState   bool
 	Link          string
 	LinkTarget    string
+	EditedByHand  bool
 }
 
 type Options struct {

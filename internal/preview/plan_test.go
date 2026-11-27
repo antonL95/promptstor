@@ -11,6 +11,24 @@ import (
 	"github.com/antonL95/promptstor/internal/plan"
 )
 
+func TestPlanWarnsAboutDeletingFileEditedByHand(t *testing.T) {
+	changes := []plan.FileChange{
+		{Path: "/x/edited.md", Op: plan.OpDelete, Before: []byte("edited\n"), EditedByHand: true},
+		{Path: "/x/clean.md", Op: plan.OpDelete, Before: []byte("clean\n")},
+	}
+	var out bytes.Buffer
+
+	if _, err := Plan(&out, engine.Plan{Changes: changes}, false); err != nil {
+		t.Fatal(err)
+	}
+
+	want := "deleting a file edited by hand: /x/edited.md\n" +
+		"2 files to change, 0 blocked, 0 unsupported\n"
+	if out.String() != want {
+		t.Errorf("got\n%s\nwant\n%s", out.String(), want)
+	}
+}
+
 func TestBlockedListGroupsBySymlink(t *testing.T) {
 	home := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(home, "dotfiles", "claude"), 0o755); err != nil {
