@@ -100,3 +100,47 @@ func TestNeededFor(t *testing.T) {
 		}
 	}
 }
+
+func TestPartitionSubsetScopedRuleNeverShared(t *testing.T) {
+	selected := []adapter.ToolID{adapter.ClaudeCode, adapter.Codex, adapter.Cursor, adapter.GeminiCLI, adapter.OpenCode, adapter.AgentsMD}
+	cases := []struct {
+		name    string
+		targets []adapter.ToolID
+	}{
+		{"one tool without a rule file", []adapter.ToolID{adapter.Codex}},
+		{"native and not native", []adapter.ToolID{adapter.ClaudeCode, adapter.OpenCode}},
+		{"none native", []adapter.ToolID{adapter.GeminiCLI, adapter.OpenCode}},
+		{"all native", []adapter.ToolID{adapter.Cursor}},
+	}
+	activations := map[string]library.Item{
+		"always": {},
+		"files":  {Activation: library.ActivationFiles, Scope: []string{"*.go"}},
+		"globs":  {Scope: []string{"*.go"}},
+		"agent":  {Activation: library.ActivationAgent, Description: "Releasing"},
+	}
+	for _, c := range cases {
+		for _, activation := range slices.Sorted(maps.Keys(activations)) {
+			t.Run(c.name+" "+activation, func(t *testing.T) {
+				rule := activations[activation]
+				rule.ID, rule.Kind, rule.Body = "subset", library.KindRule, "## Subset\n"
+				rule.Targets = library.Targets{Include: c.targets}
+				shared, perTool := agentsmd.Partition([]library.Item{rule}, selected)
+				if len(shared) != 0 {
+					t.Errorf("shared %v", ids(shared))
+				}
+				if got := slices.Sorted(maps.Keys(perTool)); !reflect.DeepEqual(got, c.targets) {
+					t.Errorf("per tool %v, want %v", got, c.targets)
+				}
+				for tool, items := range perTool {
+					if !reflect.DeepEqual(ids(items), []library.ID{"subset"}) {
+						t.Errorf("%s gets %v", tool, ids(items))
+					}
+				}
+				tg := target(t, adapter.ScopeProject, selected...)
+				if units, unsupported := export(t, tg, []library.Item{rule}); len(units) != 0 || len(unsupported) != 0 {
+					t.Errorf("units %+v, unsupported %+v", units, unsupported)
+				}
+			})
+		}
+	}
+}

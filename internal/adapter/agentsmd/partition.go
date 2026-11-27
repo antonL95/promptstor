@@ -20,11 +20,8 @@ func Partition(items []library.Item, selected []adapter.ToolID) (shared []librar
 		}
 		targeted := targetedTools(it, tools)
 		activation := activationOf(it)
-		isShared := len(targeted) == len(tools)
-		if activation != library.ActivationAlways {
-			isShared = !allSupport(targeted, activation)
-		}
-		if isShared {
+		targetsAll := len(targeted) == len(tools)
+		if targetsAll && (activation == library.ActivationAlways || !allSupport(targeted, activation)) {
 			shared = append(shared, it)
 			continue
 		}
