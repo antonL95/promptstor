@@ -19,7 +19,7 @@ func (r *restorer) pruneAll(files, all []SnapFile) error {
 		if f.Kind != KindDir || f.Keys != nil {
 			continue
 		}
-		found, err := r.unlisted(f.Path, listed)
+		found, err := r.unlisted(f, listed)
 		if err != nil {
 			return err
 		}
@@ -35,8 +35,9 @@ func (r *restorer) pruneAll(files, all []SnapFile) error {
 	return nil
 }
 
-func (r *restorer) unlisted(root string, listed map[string]bool) ([]string, error) {
-	_, linked, err := fsx.LinkedAncestor(r.store.Env.Home, root)
+func (r *restorer) unlisted(dir SnapFile, listed map[string]bool) ([]string, error) {
+	root := dir.Path
+	_, linked, err := fsx.LinkedAncestor(r.rootOf(dir), root)
 	if err != nil || linked {
 		return nil, nil
 	}

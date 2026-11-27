@@ -38,6 +38,7 @@ const (
 
 type SnapFile struct {
 	Tool       string            `json:"tool"`
+	Root       string            `json:"root,omitempty"`
 	Path       string            `json:"path"`
 	Kind       FileKind          `json:"kind"`
 	LinkTarget string            `json:"linkTarget,omitempty"`

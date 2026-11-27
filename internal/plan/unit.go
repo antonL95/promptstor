@@ -46,7 +46,7 @@ type Options struct {
 }
 
 type SnapshotEntry struct {
-	Tool, Path       string
+	Tool, Path, Root string
 	Keys, RedactKeys []string
 }
 

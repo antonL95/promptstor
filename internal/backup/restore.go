@@ -104,11 +104,16 @@ func (r *restorer) act(path, op, detail string) {
 	r.plan.Actions = append(r.plan.Actions, RestoreAction{Path: path, Op: op, Detail: detail})
 }
 
-func (r *restorer) blocked(path string) (bool, error) {
+func (r *restorer) rootOf(f SnapFile) string {
+	return cmp.Or(f.Root, r.store.Env.Home)
+}
+
+func (r *restorer) blocked(f SnapFile) (bool, error) {
+	path := f.Path
 	if Excluded(r.store.Env, path) {
 		return true, nil
 	}
-	link, linked, err := fsx.LinkedAncestor(r.store.Env.Home, filepath.Dir(path))
+	link, linked, err := fsx.LinkedAncestor(r.rootOf(f), filepath.Dir(path))
 	if err != nil {
 		r.act(path, OpBlocked, err.Error())
 		return true, nil
@@ -121,7 +126,7 @@ func (r *restorer) blocked(path string) (bool, error) {
 }
 
 func (r *restorer) restore(f SnapFile) error {
-	if stop, err := r.blocked(f.Path); stop || err != nil {
+	if stop, err := r.blocked(f); stop || err != nil {
 		return err
 	}
 	current, err := fsx.Inspect(f.Path)
@@ -233,7 +238,7 @@ func (r *restorer) restoreFile(f SnapFile, current fsx.Entry) error {
 		return err
 	}
 	r.act(f.Path, OpWrite, fmt.Sprintf("mode %v", perm))
-	return r.write(f.Path, current, content, perm)
+	return r.write(f, current, content, perm)
 }
 
 func (r *restorer) restoreKeys(f SnapFile, current fsx.Entry) error {
@@ -269,7 +274,7 @@ func (r *restorer) restoreKeys(f SnapFile, current fsx.Entry) error {
 		perm = cmp.Or(f.Mode.Perm(), 0o600)
 	}
 	r.act(f.Path, OpSetKeys, strings.Join(keys, ", "))
-	return r.write(f.Path, current, content, perm)
+	return r.write(f, current, content, perm)
 }
 
 func isRegular(e fsx.Entry) bool {
@@ -353,7 +358,8 @@ func (r *restorer) remove(path string) error {
 	return os.Remove(path)
 }
 
-func (r *restorer) write(path string, current fsx.Entry, content []byte, perm fs.FileMode) error {
+func (r *restorer) write(f SnapFile, current fsx.Entry, content []byte, perm fs.FileMode) error {
+	path := f.Path
 	if r.dryRun {
 		return nil
 	}
@@ -362,7 +368,7 @@ func (r *restorer) write(path string, current fsx.Entry, content []byte, perm fs
 			return err
 		}
 	}
-	if err := fsx.WriteAtomic(r.store.Env.Home, path, content, perm); err != nil {
+	if err := fsx.WriteAtomic(r.rootOf(f), path, content, perm); err != nil {
 		return err
 	}
 	return os.Chmod(path, perm)

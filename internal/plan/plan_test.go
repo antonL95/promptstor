@@ -312,7 +312,7 @@ func TestReplaceSymlinkWithConsent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := []plan.SnapshotEntry{{Tool: adapter.ClaudeCode, Path: path}}; !reflect.DeepEqual(snap.entries, want) {
+	if want := []plan.SnapshotEntry{{Tool: adapter.ClaudeCode, Path: path, Root: env.Home}}; !reflect.DeepEqual(snap.entries, want) {
 		t.Errorf("snapshot entries %+v", snap.entries)
 	}
 	entry, err := fsx.Inspect(path)
@@ -602,10 +602,10 @@ func TestApplySnapshotsBeforeFirstWrite(t *testing.T) {
 			t.Errorf("calls %d reason %q tree unchanged %v", snap.calls, snap.reason, snap.treeAt == before)
 		}
 		want := []plan.SnapshotEntry{
-			{Tool: "claude-code,codex", Path: at(env, ".agents/skills/x/SKILL.md")},
-			{Tool: adapter.ClaudeCode, Path: at(env, ".claude/CLAUDE.md")},
-			{Tool: adapter.ClaudeCode, Path: settings, Keys: []string{"/env/API_TOKEN", "/model", "/permissions/allow"}, RedactKeys: []string{"/env/API_TOKEN"}},
-			{Tool: adapter.Codex, Path: at(env, ".codex/config.toml")},
+			{Tool: "claude-code,codex", Path: at(env, ".agents/skills/x/SKILL.md"), Root: env.Home},
+			{Tool: adapter.ClaudeCode, Path: at(env, ".claude/CLAUDE.md"), Root: env.Home},
+			{Tool: adapter.ClaudeCode, Path: settings, Root: env.Home, Keys: []string{"/env/API_TOKEN", "/model", "/permissions/allow"}, RedactKeys: []string{"/env/API_TOKEN"}},
+			{Tool: adapter.Codex, Path: at(env, ".codex/config.toml"), Root: env.Home},
 		}
 		if !reflect.DeepEqual(snap.entries, want) {
 			t.Errorf("entries\n got %+v\nwant %+v", snap.entries, want)

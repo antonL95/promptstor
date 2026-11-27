@@ -167,14 +167,16 @@ func TestFirstRunSnapshotContainsAllEntries(t *testing.T) {
 		t.Fatalf("id %q reason %q", snap.ID, snap.Reason)
 	}
 	want := map[string]backup.FileKind{
-		".claude/settings.json":              backup.KindFile,
-		".claude/skills":                     backup.KindDir,
-		".claude/skills/demo-skill":          backup.KindDir,
-		".claude/skills/demo-skill/SKILL.md": backup.KindFile,
-		".claude/skills/demo-skill/notes.md": backup.KindFile,
-		".claude/skills/linked-skill":        backup.KindSymlink,
-		".claude/agents/reviewer.md":         backup.KindAbsent,
-		".codex/config.toml":                 backup.KindFile,
+		".claude/settings.json":                 backup.KindFile,
+		".claude/skills":                        backup.KindDir,
+		".claude/skills/demo-skill":             backup.KindDir,
+		".claude/skills/demo-skill/SKILL.md":    backup.KindFile,
+		".claude/skills/demo-skill/notes.md":    backup.KindFile,
+		".claude/skills/linked-skill":           backup.KindSymlink,
+		".claude/skills/token-counter":          backup.KindDir,
+		".claude/skills/token-counter/SKILL.md": backup.KindFile,
+		".claude/agents/reviewer.md":            backup.KindAbsent,
+		".codex/config.toml":                    backup.KindFile,
 	}
 	if len(snap.Files) != len(want) {
 		t.Errorf("snapshot has %d files, want %d: %+v", len(snap.Files), len(want), snap.Files)
@@ -249,7 +251,7 @@ func TestCredentialFilesNeverStored(t *testing.T) {
 			t.Errorf("excluded path %s recorded", f.Path)
 		}
 	}
-	for _, rel := range []string{".codex/auth.json", ".claude/.credentials.json", ".claude/backups", ".claude/skills/token-counter", ".config/opencode/service.json"} {
+	for _, rel := range []string{".codex/auth.json", ".claude/.credentials.json", ".claude/backups", ".config/opencode/service.json"} {
 		for _, f := range snap.Files {
 			if f.Path == at(env, rel) || strings.HasPrefix(f.Path, at(env, rel)+string(filepath.Separator)) {
 				t.Errorf("%s recorded", f.Path)
@@ -433,9 +435,6 @@ func TestExcludedFileInSkillDirSurvivesRestore(t *testing.T) {
 
 	if read(t, added) != "kept\n" {
 		t.Error("excluded file touched")
-	}
-	if got := read(t, at(env, ".claude/skills/token-counter/SKILL.md")); !strings.Contains(got, credentialMarker) {
-		t.Error("excluded skill touched")
 	}
 }
 
@@ -779,9 +778,13 @@ func TestExcludedRules(t *testing.T) {
 		"/h/.local/share/opencode/storage/x.json":     true,
 		"/h/.claude/backups":                          true,
 		"/h/.claude/backups/.claude.json.backup":      true,
-		"/h/.claude/skills/My-Secrets/SKILL.md":       true,
-		"/h/.codex/OAuth/x":                           true,
-		"/h/.claude/skills/tokenizer/SKILL.md":        true,
+		"/h/.claude/skills/My-Secrets/SKILL.md":       false,
+		"/h/.codex/OAuth/x":                           false,
+		"/h/.claude/skills/tokenizer/SKILL.md":        false,
+		"/h/.claude/skills/x/token-notes.md":          false,
+		"/h/.claude/skills/x/TOKEN-NOTES.MD":          false,
+		"/h/x/secrets.json":                           true,
+		"/h/.codex/OAuth/client-token":                true,
 		"/h/.claude/settings.json":                    false,
 		"/h/.claude.json":                             false,
 		"/h/.config/opencode/opencode.json":           false,
@@ -822,5 +825,91 @@ func TestLinkedClaudeStateNotReplacedOnRestore(t *testing.T) {
 	}
 	if !slices.Equal(opsOf(restored), []string{"blocked"}) {
 		t.Errorf("ops %v", opsOf(restored))
+	}
+}
+
+func TestTokenNamedSkillIsBackedUp(t *testing.T) {
+	env := home(t)
+	s := store(env)
+	write(t, at(env, ".claude/skills/token-counter/secrets.json"), `{"key": "`+credentialMarker+`"}`)
+	snap := take(t, s, backup.ReasonFirstRun, entry(env, claudeTool, ".claude/skills"))
+
+	if f := fileAt(t, snap, at(env, ".claude/skills/token-counter")); f.Kind != backup.KindDir {
+		t.Errorf("token-counter kind %q", f.Kind)
+	}
+	skill := fileAt(t, snap, at(env, ".claude/skills/token-counter/SKILL.md"))
+	if !strings.Contains(string(blob(t, env, skill)), "Count the tokens.") {
+		t.Error("token-counter skill not stored")
+	}
+	for _, f := range snap.Files {
+		if strings.HasSuffix(f.Path, "secrets.json") {
+			t.Errorf("%s recorded", f.Path)
+		}
+	}
+	assertNoMarkerStored(t, env, credentialMarker)
+}
+
+func TestChangeSnapshotOfExcludedPathFails(t *testing.T) {
+	env := home(t)
+	s := store(env)
+	_, err := s.Take(backup.ReasonChange, []plan.SnapshotEntry{
+		entry(env, claudeTool, ".claude/CLAUDE.md"),
+		entry(env, codexTool, ".codex/auth.json"),
+	})
+	if err == nil {
+		t.Fatal("change snapshot of a credential file succeeded")
+	}
+	if _, err := s.Snapshot("change", []plan.SnapshotEntry{entry(env, "gemini", ".gemini/oauth_creds.json")}); err == nil {
+		t.Fatal("Snapshot of a credential file succeeded")
+	}
+	listed, err := s.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(listed) != 0 {
+		t.Errorf("snapshots written: %+v", listed)
+	}
+	for _, reason := range []backup.Reason{backup.ReasonFirstRun, backup.ReasonPreRestore} {
+		snap := take(t, s, reason, entry(env, codexTool, ".codex/auth.json"))
+		if !slices.Equal(snap.Skipped, []string{at(env, ".codex/auth.json")}) {
+			t.Errorf("%s skipped %v", reason, snap.Skipped)
+		}
+	}
+	assertNoMarkerStored(t, env, credentialMarker)
+}
+
+func TestRestoreProjectFileUnderRepoRoot(t *testing.T) {
+	env := home(t)
+	s := store(env)
+	repo := filepath.Join(t.TempDir(), "repo")
+	rules := filepath.Join(repo, "AGENTS.md")
+	settings := filepath.Join(repo, ".claude", "settings.json")
+	mcp := filepath.Join(repo, ".mcp.json")
+	skill := filepath.Join(repo, ".claude", "skills", "demo", "SKILL.md")
+	write(t, rules, "# Repo rules\n")
+	write(t, settings, `{"model": "repo-model"}`)
+	write(t, skill, "repo skill\n")
+	project := func(path string) plan.SnapshotEntry {
+		return plan.SnapshotEntry{Tool: claudeTool, Path: path, Root: repo}
+	}
+	snap := take(t, s, backup.ReasonChange, project(rules), project(settings), project(mcp), project(filepath.Join(repo, ".claude", "skills")))
+	if f := fileAt(t, snap, skill); f.Root != repo {
+		t.Errorf("child root %q", f.Root)
+	}
+	write(t, rules, "edited\n")
+	write(t, settings, `{"model": "edited"}`)
+	write(t, mcp, `{"mcpServers": {}}`)
+	write(t, filepath.Join(repo, ".claude", "skills", "demo", "extra.md"), "added\n")
+
+	restored := restore(t, s, snap.ID, "", false)
+
+	if slices.Contains(opsOf(restored), "blocked") {
+		t.Fatalf("blocked: %+v", restored.Actions)
+	}
+	if read(t, rules) != "# Repo rules\n" || read(t, settings) != `{"model": "repo-model"}` {
+		t.Error("project files not restored")
+	}
+	if exists(t, mcp) || exists(t, filepath.Join(repo, ".claude", "skills", "demo", "extra.md")) {
+		t.Error("added project files not removed")
 	}
 }

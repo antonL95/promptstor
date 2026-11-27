@@ -1,6 +1,7 @@
 package backup
 
 import (
+	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -19,7 +20,7 @@ var credentialBasenames = []string{
 	"google_accounts.json",
 }
 
-var credentialSegment = regexp.MustCompile(`(?i)(token|credential|secret|oauth)`)
+var credentialName = regexp.MustCompile(`(?i)(token|credential|secret|oauth)`)
 
 var claudeStatePointers = []string{"/customApiKeyResponses", "/oauthAccount", "/primaryApiKey"}
 
@@ -34,7 +35,16 @@ func Excluded(env paths.Env, path string) bool {
 	if slices.ContainsFunc(excludedTrees(env), func(root string) bool { return within(root, path) }) {
 		return true
 	}
-	return slices.ContainsFunc(segmentsBelowHome(env, path), credentialSegment.MatchString)
+	return credentialNamed(path)
+}
+
+func credentialNamed(path string) bool {
+	name := filepath.Base(path)
+	if strings.EqualFold(filepath.Ext(name), ".md") || !credentialName.MatchString(name) {
+		return false
+	}
+	info, err := os.Lstat(path)
+	return err != nil || !info.IsDir()
 }
 
 func ExcludedPointers(env paths.Env, path string) []string {
@@ -62,13 +72,6 @@ func excludedTrees(env paths.Env) []string {
 func within(root, path string) bool {
 	relative, err := filepath.Rel(root, path)
 	return err == nil && filepath.IsLocal(relative)
-}
-
-func segmentsBelowHome(env paths.Env, path string) []string {
-	if relative, err := filepath.Rel(env.Home, path); err == nil && filepath.IsLocal(relative) {
-		path = relative
-	}
-	return strings.Split(filepath.ToSlash(path), "/")
 }
 
 func pointerExcluded(excluded []string, key string) bool {

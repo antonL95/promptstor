@@ -35,6 +35,7 @@ type taker struct {
 	store Store
 	snap  Snapshot
 	blobs map[string][]byte
+	root  string
 }
 
 func (t *taker) record(entry plan.SnapshotEntry) error {
@@ -43,6 +44,9 @@ func (t *taker) record(entry plan.SnapshotEntry) error {
 		return errors.New("path is not absolute")
 	}
 	if Excluded(t.store.Env, path) {
+		if t.snap.Reason == ReasonChange {
+			return errors.New("refusing to change a credential file that is never backed up")
+		}
 		t.snap.Skipped = append(t.snap.Skipped, path)
 		return nil
 	}
@@ -50,6 +54,7 @@ func (t *taker) record(entry plan.SnapshotEntry) error {
 	if err != nil {
 		return err
 	}
+	t.root = entry.Root
 	if len(entry.Keys) > 0 {
 		return t.recordKeys(entry.Tool, path, current, entry.Keys, entry.RedactKeys)
 	}
@@ -69,6 +74,7 @@ func (t *taker) record(entry plan.SnapshotEntry) error {
 }
 
 func (t *taker) add(f SnapFile) {
+	f.Root = t.root
 	t.snap.Files = append(t.snap.Files, f)
 }
 

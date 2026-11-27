@@ -89,7 +89,7 @@ func snapshotEntries(pending []FileChange) []SnapshotEntry {
 		if c.Op == OpNoop {
 			continue
 		}
-		entry := SnapshotEntry{Tool: strings.Join(changeTools(c), ","), Path: c.Path}
+		entry := SnapshotEntry{Tool: strings.Join(changeTools(c), ","), Path: c.Path, Root: c.Root}
 		if c.SharedState && onlyJSON(c) {
 			entry.Keys = jsonPointers(c)
 		}
