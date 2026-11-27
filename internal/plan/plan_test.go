@@ -112,8 +112,13 @@ func only(t *testing.T, changes []plan.FileChange, path string) plan.FileChange 
 }
 
 func apply(env paths.Env, changes []plan.FileChange, snap plan.Snapshotter, m *manifest.Manifest) (plan.ApplyResult, error) {
+	held, err := fsx.Hold(env.LockPath(), 0)
+	if err != nil {
+		return plan.ApplyResult{}, err
+	}
+	defer held.Release()
 	a := plan.Applier{Now: func() time.Time { return written }}
-	return a.Apply(changes, snap, m, env.ManifestPath(), env.LockPath())
+	return a.Apply(held, changes, snap, m, env.ManifestPath())
 }
 
 func read(t *testing.T, path string) string {
@@ -684,23 +689,27 @@ func TestApplyStopsOnErrorAndRecordsOnlyWritten(t *testing.T) {
 	}
 }
 
-func TestApplyFailsWhileLockHeld(t *testing.T) {
+func TestApplyRefusesWithoutHeldLock(t *testing.T) {
 	env := home(t)
-	release, err := fsx.Acquire(env.LockPath(), 0)
+	released, err := fsx.Hold(env.LockPath(), 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer release()
-	desired := []plan.Unit{unit(env, adapter.Codex, "notes/a.md", manifest.UnitFile, "", "a\n")}
-	changes := diff(t, desired, manifest.Manifest{}, []string{adapter.Codex}, plan.Options{})
-	before := testenv.TreeHash(t, env.Home)
-	snap := &recorder{t: t, root: env.Home}
-	var m manifest.Manifest
-	_, err = apply(env, changes, snap, &m)
-	if !errors.Is(err, fsx.ErrLocked) || !strings.Contains(err.Error(), "pid") {
-		t.Fatalf("error %v", err)
+	released.Release()
+	for name, held := range map[string]*fsx.Held{"nil": nil, "released": released} {
+		t.Run(name, func(t *testing.T) {
+			desired := []plan.Unit{unit(env, adapter.Codex, "notes/a.md", manifest.UnitFile, "", "a\n")}
+			changes := diff(t, desired, manifest.Manifest{}, []string{adapter.Codex}, plan.Options{})
+			before := testenv.TreeHash(t, env.Home)
+			snap := &recorder{t: t, root: env.Home}
+			var m manifest.Manifest
+			_, err := plan.Applier{}.Apply(held, changes, snap, &m, env.ManifestPath())
+			if !errors.Is(err, fsx.ErrNotHeld) {
+				t.Fatalf("error %v", err)
+			}
+			assertUntouched(t, env, before, snap)
+		})
 	}
-	assertUntouched(t, env, before, snap)
 }
 
 func TestApplyRefusesFileChangedSincePlan(t *testing.T) {

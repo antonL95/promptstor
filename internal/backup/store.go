@@ -195,11 +195,18 @@ func (s Store) readBlob(sum string) ([]byte, error) {
 }
 
 func (s Store) Prune(keep int) error {
-	release, err := fsx.Acquire(s.Env.LockPath(), lockWait)
+	held, err := fsx.Hold(s.Env.LockPath(), lockWait)
 	if err != nil {
 		return fmt.Errorf("prune: %w", err)
 	}
-	defer release()
+	defer held.Release()
+	return s.PruneHeld(held, keep)
+}
+
+func (s Store) PruneHeld(held *fsx.Held, keep int) error {
+	if err := held.Check(); err != nil {
+		return fmt.Errorf("prune: %w", err)
+	}
 	snaps, err := s.List()
 	if err != nil {
 		return err

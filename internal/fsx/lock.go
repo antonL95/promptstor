@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -23,6 +24,36 @@ func (pid heldBy) Error() string {
 }
 
 func (heldBy) Unwrap() error { return ErrLocked }
+
+var ErrNotHeld = errors.New("the run lock is not held")
+
+type Held struct {
+	release  func()
+	released atomic.Bool
+}
+
+func Hold(path string, wait time.Duration) (*Held, error) {
+	release, err := Acquire(path, wait)
+	if err != nil {
+		return nil, err
+	}
+	return &Held{release: release}, nil
+}
+
+func (h *Held) Release() {
+	if h == nil {
+		return
+	}
+	h.released.Store(true)
+	h.release()
+}
+
+func (h *Held) Check() error {
+	if h == nil || h.released.Load() {
+		return ErrNotHeld
+	}
+	return nil
+}
 
 func Acquire(path string, wait time.Duration) (release func(), err error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {

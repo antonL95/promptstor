@@ -39,17 +39,31 @@ type RestorePlan struct {
 }
 
 func (s Store) Restore(id, tool string, dryRun bool) (RestorePlan, error) {
+	if dryRun {
+		return s.restore(id, tool, true)
+	}
+	held, err := fsx.Hold(s.Env.LockPath(), lockWait)
+	if err != nil {
+		return RestorePlan{}, fmt.Errorf("restore: %w", err)
+	}
+	defer held.Release()
+	return s.RestoreHeld(held, id, tool)
+}
+
+func (s Store) RestoreHeld(held *fsx.Held, id, tool string) (RestorePlan, error) {
+	if err := held.Check(); err != nil {
+		return RestorePlan{}, fmt.Errorf("restore: %w", err)
+	}
+	return s.restore(id, tool, false)
+}
+
+func (s Store) restore(id, tool string, dryRun bool) (RestorePlan, error) {
 	snap, err := s.load(id)
 	if err != nil {
 		return RestorePlan{}, err
 	}
 	r := restorer{store: s, dryRun: dryRun, plan: RestorePlan{Snapshot: snap}}
 	if !dryRun {
-		release, err := fsx.Acquire(s.Env.LockPath(), lockWait)
-		if err != nil {
-			return r.plan, fmt.Errorf("restore: %w", err)
-		}
-		defer release()
 		pre, err := s.Take(ReasonPreRestore, entriesFor(snap.Entries, tool))
 		if err != nil {
 			return r.plan, fmt.Errorf("snapshot before restoring: %w", err)

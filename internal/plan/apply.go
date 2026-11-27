@@ -17,21 +17,22 @@ import (
 )
 
 const (
-	lockWait        = 5 * time.Second
 	snapshotReason  = "change"
 	defaultFileMode = fs.FileMode(0o644)
 )
 
 type Applier struct {
-	Now      func() time.Time
-	LockWait time.Duration
+	Now func() time.Time
 }
 
-func Apply(changes []FileChange, snap Snapshotter, m *manifest.Manifest, manifestPath, lockPath string) (ApplyResult, error) {
-	return Applier{LockWait: lockWait}.Apply(changes, snap, m, manifestPath, lockPath)
+func Apply(held *fsx.Held, changes []FileChange, snap Snapshotter, m *manifest.Manifest, manifestPath string) (ApplyResult, error) {
+	return Applier{}.Apply(held, changes, snap, m, manifestPath)
 }
 
-func (a Applier) Apply(changes []FileChange, snap Snapshotter, m *manifest.Manifest, manifestPath, lockPath string) (ApplyResult, error) {
+func (a Applier) Apply(held *fsx.Held, changes []FileChange, snap Snapshotter, m *manifest.Manifest, manifestPath string) (ApplyResult, error) {
+	if err := held.Check(); err != nil {
+		return ApplyResult{}, fmt.Errorf("apply: %w", err)
+	}
 	if a.Now == nil {
 		a.Now = time.Now
 	}
@@ -48,11 +49,6 @@ func (a Applier) Apply(changes []FileChange, snap Snapshotter, m *manifest.Manif
 	if len(pending) == 0 {
 		return result, nil
 	}
-	release, err := fsx.Acquire(lockPath, a.LockWait)
-	if err != nil {
-		return result, fmt.Errorf("apply: %w", err)
-	}
-	defer release()
 	if entries := snapshotEntries(pending); len(entries) > 0 {
 		id, err := snap.Snapshot(snapshotReason, entries)
 		if err != nil {

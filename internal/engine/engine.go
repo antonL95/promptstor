@@ -112,7 +112,12 @@ func (e Engine) Plan(projectRoot string, opt plan.Options) (Plan, error) {
 }
 
 func (e Engine) Sync(projectRoot string, opt plan.Options) (plan.ApplyResult, Plan, error) {
-	_, notes, err := e.WriteMissingIDs(projectRoot)
+	held, err := fsx.Hold(e.Env.LockPath(), lockWait)
+	if err != nil {
+		return plan.ApplyResult{}, Plan{}, fmt.Errorf("sync: %w", err)
+	}
+	defer held.Release()
+	_, notes, err := e.writeMissingIDs(projectRoot)
 	if err != nil {
 		return plan.ApplyResult{}, Plan{}, err
 	}
@@ -121,16 +126,16 @@ func (e Engine) Sync(projectRoot string, opt plan.Options) (plan.ApplyResult, Pl
 	if err != nil {
 		return plan.ApplyResult{}, p, err
 	}
-	applier := plan.Applier{Now: e.now, LockWait: lockWait}
-	result, err := applier.Apply(p.Changes, e.Backups(), &m, e.Env.ManifestPath(), e.Env.LockPath())
+	applier := plan.Applier{Now: e.now}
+	result, err := applier.Apply(held, p.Changes, e.Backups(), &m, e.Env.ManifestPath())
 	if err == nil {
-		e.pruneSnapshots()
+		e.pruneSnapshots(held)
 	}
 	return result, p, err
 }
 
-func (e Engine) pruneSnapshots() {
-	if err := e.Backups().Prune(keptSnapshots); err != nil && e.Warn != nil {
+func (e Engine) pruneSnapshots(held *fsx.Held) {
+	if err := e.Backups().PruneHeld(held, keptSnapshots); err != nil && e.Warn != nil {
 		e.Warn(err)
 	}
 }
@@ -197,8 +202,16 @@ func (e Engine) adapterFor(tool string) (adapter.Adapter, error) {
 }
 
 func (e Engine) Restore(id, tool string, dryRun bool) (backup.RestorePlan, error) {
-	restored, err := e.Backups().Restore(id, tool, dryRun)
-	if err != nil || dryRun {
+	if dryRun {
+		return e.Backups().Restore(id, tool, true)
+	}
+	held, err := fsx.Hold(e.Env.LockPath(), lockWait)
+	if err != nil {
+		return backup.RestorePlan{}, fmt.Errorf("restore: %w", err)
+	}
+	defer held.Release()
+	restored, err := e.Backups().RestoreHeld(held, id, tool)
+	if err != nil {
 		return restored, err
 	}
 	var paths []string
@@ -210,16 +223,11 @@ func (e Engine) Restore(id, tool string, dryRun bool) (backup.RestorePlan, error
 	if err := e.reconcile(paths); err != nil {
 		return restored, fmt.Errorf("reconcile manifest after restore: %w", err)
 	}
-	e.pruneSnapshots()
+	e.pruneSnapshots(held)
 	return restored, nil
 }
 
 func (e Engine) reconcile(paths []string) error {
-	release, err := fsx.Acquire(e.Env.LockPath(), lockWait)
-	if err != nil {
-		return err
-	}
-	defer release()
 	m, err := manifest.Load(e.Env.ManifestPath())
 	if err != nil {
 		return err

@@ -45,11 +45,19 @@ func (e Engine) WriteMissingIDs(projectRoot string) (map[library.ID]library.ID, 
 	if err != nil || !missing {
 		return nil, nil, err
 	}
-	release, err := fsx.Acquire(e.Env.LockPath(), lockWait)
+	held, err := fsx.Hold(e.Env.LockPath(), lockWait)
 	if err != nil {
 		return nil, nil, fmt.Errorf("write missing ids: %w", err)
 	}
-	defer release()
+	defer held.Release()
+	return e.writeMissingIDs(projectRoot)
+}
+
+func (e Engine) writeMissingIDs(projectRoot string) (map[library.ID]library.ID, []adapter.Unsupported, error) {
+	missing, err := e.hasMissingIDs(projectRoot)
+	if err != nil || !missing {
+		return nil, nil, err
+	}
 	renamed := map[library.ID]library.ID{}
 	var notes []adapter.Unsupported
 	for _, source := range e.layerSources(projectRoot) {

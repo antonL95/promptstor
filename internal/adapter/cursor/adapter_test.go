@@ -17,6 +17,7 @@ import (
 
 	"github.com/antonL95/promptstor/internal/adapter"
 	_ "github.com/antonL95/promptstor/internal/adapter/cursor"
+	"github.com/antonL95/promptstor/internal/fsx"
 	"github.com/antonL95/promptstor/internal/library"
 	"github.com/antonL95/promptstor/internal/managed"
 	"github.com/antonL95/promptstor/internal/manifest"
@@ -944,7 +945,12 @@ func TestRemovingLastHookKeepsUserVersion(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := plan.Apply(changes, noSnapshot{}, &m, tg.Env.ManifestPath(), tg.Env.LockPath()); err != nil {
+		held, err := fsx.Hold(tg.Env.LockPath(), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer held.Release()
+		if _, err := plan.Apply(held, changes, noSnapshot{}, &m, tg.Env.ManifestPath()); err != nil {
 			t.Fatal(err)
 		}
 	}
