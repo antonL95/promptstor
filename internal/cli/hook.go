@@ -42,6 +42,13 @@ func editGuardNotices(cfg config.Config) []adapter.Unsupported {
 	return []adapter.Unsupported{{Tool: adapter.Antigravity, Name: "edit guard " + adapter.Antigravity, Reason: reasonNoAntigravityGuard}}
 }
 
+func (d Deps) registeredServer(cfg config.Config) []library.Item {
+	if !cfg.RegisterMCP || d.Binary == "" {
+		return nil
+	}
+	return []library.Item{library.PromptstorMCP(d.Binary)}
+}
+
 func (d Deps) editGuards(cfg config.Config) ([]library.Item, error) {
 	if !cfg.EditGuards || d.Binary == "" {
 		return nil, nil

@@ -7,7 +7,10 @@ import (
 )
 
 const (
-	editGuardPrefix  = "ps_builtin_guard_"
+	builtinPrefix    = "ps_builtin_"
+	editGuardPrefix  = builtinPrefix + "guard_"
+	promptstorMCPID  = builtinPrefix + "mcp"
+	promptstorName   = "promptstor"
 	editGuardName    = "edit guard"
 	opencodeTool     = "opencode"
 	eventKey         = "event"
@@ -47,6 +50,21 @@ func GuardedTools() []string {
 	}
 	slices.Sort(tools)
 	return tools
+}
+
+func IsBuiltin(id ID) bool {
+	return strings.HasPrefix(string(id), builtinPrefix)
+}
+
+func PromptstorMCP(binary string) Item {
+	return Item{
+		ID:          promptstorMCPID,
+		Kind:        KindMCP,
+		Name:        promptstorName,
+		Layer:       LayerCompany,
+		Description: "Lets agents change their instructions through PromptStor",
+		MCP:         &MCPServer{Transport: "stdio", Command: binary, Args: []string{"mcp"}},
+	}
 }
 
 func IsEditGuard(it Item) bool {

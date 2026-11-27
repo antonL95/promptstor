@@ -62,7 +62,7 @@ func (e Engine) desired(projectRoot string, merged library.Merged, m manifest.Ma
 				items = merged.ForTool(tool)
 			}
 			if t.Scope != adapter.ScopeUser {
-				items = slices.DeleteFunc(slices.Clone(items), library.IsEditGuard)
+				items = slices.DeleteFunc(slices.Clone(items), func(it library.Item) bool { return library.IsBuiltin(it.ID) })
 			}
 			result, err := e.export(t, a, items, m)
 			if err != nil {

@@ -26,6 +26,7 @@ func main() {
 		Env:    env,
 		Now:    time.Now,
 		Run:    runCommand,
+		RunIn:  runCommandIn,
 		Binary: binaryPath(),
 	})
 	if err := root.Execute(); err != nil {
@@ -51,4 +52,10 @@ func binaryPath() string {
 
 func runCommand(name string, args ...string) ([]byte, error) {
 	return exec.Command(name, args...).Output()
+}
+
+func runCommandIn(dir, name string, args ...string) ([]byte, error) {
+	cmd := exec.Command(name, args...)
+	cmd.Dir = dir
+	return cmd.Output()
 }

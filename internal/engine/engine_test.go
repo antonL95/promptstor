@@ -901,3 +901,20 @@ func TestEditGuardsInstallAtUserScopeOnly(t *testing.T) {
 		}
 	}
 }
+
+func TestPromptstorMCPRegistersAtUserScopeOnly(t *testing.T) {
+	env := home(t)
+	e := newEngine(env, adapter.ClaudeCode)
+	e.Builtins = []library.Item{library.PromptstorMCP("/opt/promptstor/bin/promptstor")}
+	project := t.TempDir()
+	p := mustPlan(t, e, project)
+	user, found := changeFor(p, at(env, ".claude.json"))
+	if !found || !bytes.Contains(user.After, []byte(`"/opt/promptstor/bin/promptstor"`)) {
+		t.Fatalf("user change %+v, want the promptstor server", user)
+	}
+	for _, c := range p.Changes {
+		if strings.HasPrefix(c.Path, project) && bytes.Contains(c.After, []byte("/opt/promptstor/bin/promptstor")) {
+			t.Errorf("project file %s registers the promptstor server", c.Path)
+		}
+	}
+}

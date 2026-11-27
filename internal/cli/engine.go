@@ -35,7 +35,7 @@ func (d Deps) engine() (engine.Engine, error) {
 		Resolver: secrets.OSResolver(d.Env, d.run),
 		Acks:     acks,
 		Now:      d.Now,
-		Builtins: append(slices.Clone(d.Builtins), guards...),
+		Builtins: slices.Concat(d.Builtins, guards, d.registeredServer(cfg)),
 		Notices:  editGuardNotices(cfg),
 	}, nil
 }

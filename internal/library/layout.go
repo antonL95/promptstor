@@ -57,6 +57,18 @@ func writeSlug(it Item) string {
 	}
 }
 
+func ItemPath(dir string, it Item) (string, error) {
+	l, err := layoutOf(it.Kind)
+	if err != nil {
+		return "", fmt.Errorf("item %q: %w", it.Name, err)
+	}
+	slug := writeSlug(it)
+	if slug == "" {
+		return "", fmt.Errorf("%s %q: the name gives no file name", it.Kind, it.Name)
+	}
+	return l.mainPath(dir, slug), nil
+}
+
 func storedSlug(it Item) string {
 	if it.slug != "" {
 		return it.slug
