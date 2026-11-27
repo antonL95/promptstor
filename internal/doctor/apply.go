@@ -4,10 +4,14 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 
+	"github.com/antonL95/promptstor/internal/backup"
 	"github.com/antonL95/promptstor/internal/engine"
 	"github.com/antonL95/promptstor/internal/fsx"
+	"github.com/antonL95/promptstor/internal/paths"
 	"github.com/antonL95/promptstor/internal/preview"
 )
 
@@ -77,12 +81,42 @@ func (d *doctor) applyFiles(s *firstRunState) error {
 		if !del.wanted() {
 			continue
 		}
+		credential, err := excludedInside(d.e.Env, del.path)
+		if err != nil {
+			return err
+		}
+		if credential != "" {
+			d.w.printf("kept %s: it holds %s, which PromptStor never backs up or deletes\n", del.path, credential)
+			continue
+		}
 		if err := removeOriginal(del.root, del.path); err != nil {
 			return err
 		}
 		d.w.printf("deleted %s\n", del.path)
 	}
 	return nil
+}
+
+func excludedInside(env paths.Env, path string) (string, error) {
+	entry, err := fsx.Inspect(path)
+	if err != nil || !entry.Exists || entry.IsLink {
+		return "", err
+	}
+	var found string
+	err = filepath.WalkDir(path, func(current string, de fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !de.IsDir() && backup.Excluded(env, current) {
+			found = current
+			return fs.SkipAll
+		}
+		return nil
+	})
+	if err != nil {
+		return "", fmt.Errorf("inspect %s: %w", path, err)
+	}
+	return found, nil
 }
 
 func removeOriginal(root, path string) error {

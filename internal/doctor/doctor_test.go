@@ -522,6 +522,26 @@ func TestFirstRunDeletesRenamedOriginalOnConsent(t *testing.T) {
 	}
 }
 
+func TestFirstRunKeepsOriginalFolderHoldingCredentials(t *testing.T) {
+	env := fixtureHome(t)
+	folder := filepath.Join(env.Home, ".claude", "skills", "Deploy Steps")
+	write(t, filepath.Join(folder, "SKILL.md"), "---\nname: deploy-steps\ndescription: Deploy the preview\n---\nDeploy the preview.\n")
+	credential := filepath.Join(folder, "token.json")
+	write(t, credential, "{}\n")
+
+	out, s := firstRun(t, env, answer{deleteOriginal + " " + folder, "yes"})
+
+	if !s.wasAsked(deleteOriginal + " " + folder) {
+		t.Fatalf("not asked about %s: %v\n%s", folder, s.asked, out)
+	}
+	if !exists(credential) {
+		t.Fatal("the credential file inside the adopted folder was deleted")
+	}
+	if want := "kept " + folder + ": it holds " + credential; !strings.Contains(out, want) {
+		t.Errorf("output does not report the kept folder (%q):\n%s", want, out)
+	}
+}
+
 func TestFirstRunAsksAboutRuleFileMovedIntoSection(t *testing.T) {
 	env := fixtureHome(t)
 	naming := filepath.Join(env.Home, ".claude", "rules", "Naming.md")
