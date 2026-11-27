@@ -36,9 +36,13 @@ func init() {
 
 func (Adapter) ID() adapter.ToolID { return tool }
 
-func (Adapter) Detect(env paths.Env) adapter.Detection {
+func (Adapter) DetectPaths(env paths.Env) []string {
+	return []string{filepath.Join(env.Home, configDirName), filepath.Join(env.Home, stateName)}
+}
+
+func (a Adapter) Detect(env paths.Env) adapter.Detection {
 	var found adapter.Detection
-	for _, path := range []string{filepath.Join(env.Home, configDirName), filepath.Join(env.Home, stateName)} {
+	for _, path := range a.DetectPaths(env) {
 		if _, err := os.Lstat(path); err == nil {
 			found.Paths = append(found.Paths, path)
 		}

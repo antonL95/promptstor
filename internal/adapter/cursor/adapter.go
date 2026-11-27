@@ -38,11 +38,16 @@ func init() {
 
 func (Adapter) ID() adapter.ToolID { return tool }
 
-func (Adapter) Detect(env paths.Env) adapter.Detection {
+func (Adapter) DetectPaths(env paths.Env) []string {
+	return []string{filepath.Join(env.Home, configDirName)}
+}
+
+func (a Adapter) Detect(env paths.Env) adapter.Detection {
 	var found adapter.Detection
-	dir := filepath.Join(env.Home, configDirName)
-	if info, err := os.Stat(dir); err == nil && info.IsDir() {
-		found.Paths = []string{dir}
+	for _, dir := range a.DetectPaths(env) {
+		if info, err := os.Stat(dir); err == nil && info.IsDir() {
+			found.Paths = append(found.Paths, dir)
+		}
 	}
 	found.Installed = len(found.Paths) > 0
 	if env.LookPath != nil {

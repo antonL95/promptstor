@@ -39,10 +39,16 @@ func init() {
 
 func (Adapter) ID() adapter.ToolID { return tool }
 
-func (Adapter) Detect(env paths.Env) adapter.Detection {
+func (Adapter) DetectPaths(env paths.Env) []string {
+	return []string{codexHome(env)}
+}
+
+func (a Adapter) Detect(env paths.Env) adapter.Detection {
 	var found adapter.Detection
-	if home := codexHome(env); exists(home) {
-		found.Paths = []string{home}
+	for _, path := range a.DetectPaths(env) {
+		if exists(path) {
+			found.Paths = append(found.Paths, path)
+		}
 	}
 	found.Installed = len(found.Paths) > 0
 	if env.LookPath != nil {

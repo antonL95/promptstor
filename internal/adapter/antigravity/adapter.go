@@ -45,10 +45,18 @@ func init() {
 
 func (Adapter) ID() adapter.ToolID { return tool }
 
-func (Adapter) Detect(env paths.Env) adapter.Detection {
-	var found adapter.Detection
+func (Adapter) DetectPaths(env paths.Env) []string {
+	dirs := make([]string, 0, len(surfaceDirs))
 	for _, name := range surfaceDirs {
-		if dir := filepath.Join(env.Home, geminiDirName, name); exists(dir) {
+		dirs = append(dirs, filepath.Join(env.Home, geminiDirName, name))
+	}
+	return dirs
+}
+
+func (a Adapter) Detect(env paths.Env) adapter.Detection {
+	var found adapter.Detection
+	for _, dir := range a.DetectPaths(env) {
+		if exists(dir) {
 			found.Paths = append(found.Paths, dir)
 		}
 	}

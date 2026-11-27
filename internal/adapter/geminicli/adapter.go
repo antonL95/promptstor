@@ -40,10 +40,16 @@ func init() {
 
 func (Adapter) ID() adapter.ToolID { return tool }
 
-func (Adapter) Detect(env paths.Env) adapter.Detection {
+func (Adapter) DetectPaths(env paths.Env) []string {
+	return []string{filepath.Join(env.Home, configDirName, settingsName)}
+}
+
+func (a Adapter) Detect(env paths.Env) adapter.Detection {
 	var found adapter.Detection
-	if settings := filepath.Join(env.Home, configDirName, settingsName); exists(settings) {
-		found.Paths = []string{settings}
+	for _, path := range a.DetectPaths(env) {
+		if exists(path) {
+			found.Paths = append(found.Paths, path)
+		}
 	}
 	found.Installed = len(found.Paths) > 0
 	if env.LookPath != nil {
