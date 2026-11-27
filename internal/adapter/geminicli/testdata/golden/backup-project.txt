@@ -1,3 +1,4 @@
+<project>/.agents/skills root=<project> keys=[] redact=[]
 <project>/.gemini/agents root=<project> keys=[] redact=[]
 <project>/.gemini/commands root=<project> keys=[] redact=[]
 <project>/.gemini/settings.json root=<project> keys=[] redact=[]

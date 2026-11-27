@@ -14,13 +14,13 @@ func (Adapter) BackupSet(t adapter.Target) []plan.SnapshotEntry {
 	if !ok {
 		return nil
 	}
-	set := []string{l.settings, l.in(commandsDir), l.in(agentsDir)}
+	set := []string{l.settings, l.in(commandsDir), l.in(agentsDir), l.sharedSkills()}
 	if l.scope == adapter.ScopeUser {
 		memory, reason := l.memoryFile(t.Env)
 		if reason != "" {
 			memory = l.in(memoryName)
 		}
-		set = append(set, memory, l.in(policiesDir), l.sharedSkills())
+		set = append(set, memory, l.in(policiesDir))
 	} else {
 		set = append(set, filepath.Join(l.root, memoryName))
 	}
