@@ -19,7 +19,7 @@ import (
 
 const (
 	reasonNoRoot     = "no root known for this file"
-	reasonUnmanaged  = "not created by promptstor"
+	ReasonUnmanaged  = "not created by promptstor"
 	ReasonConflict   = "shared file conflict: "
 	ReasonSymlinked  = "symlinked -> "
 	reasonNotRegular = "not a regular file"

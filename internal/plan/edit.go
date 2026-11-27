@@ -78,7 +78,7 @@ func (e *editor) apply(u Unit) string {
 		}
 	}
 	if u.Kind == manifest.UnitFile && present && !owned && !hasNotice(e.doc) && !e.adopt {
-		return reasonUnmanaged
+		return ReasonUnmanaged
 	}
 	out, err := setUnit(u.Kind, e.doc, u.Key, u.Content)
 	if err != nil {

@@ -1,6 +1,8 @@
 package doctor_test
 
 import (
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -53,6 +55,58 @@ func TestDoctorMarksExternalAndSkipsIt(t *testing.T) {
 	}
 	if got := read(t, codexMD(env)); got != codex {
 		t.Error("later run wrote the external file")
+	}
+}
+
+type externalProbe struct {
+	*script
+	options []string
+}
+
+func (p *externalProbe) MultiSelect(q string, opts []string, defs []int) ([]int, error) {
+	if strings.Contains(q, otherWriter) {
+		p.options = opts
+	}
+	return p.script.MultiSelect(q, opts, defs)
+}
+
+func TestExternalQuestionListsOnlyWritableFiles(t *testing.T) {
+	env := fixtureHome(t)
+	skills := filepath.Join(env.Home, ".claude", "skills")
+	linkedSkills := filepath.Join(env.Home, "dotfiles", "skills")
+	if err := os.MkdirAll(filepath.Dir(linkedSkills), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(skills, linkedSkills); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join("..", "dotfiles", "skills"), skills); err != nil {
+		t.Fatal(err)
+	}
+	commands := filepath.Join(env.Home, ".claude", "commands")
+	for _, name := range []string{"one", "two", "three", "four", "five", "six"} {
+		write(t, filepath.Join(commands, name+".md"), "Run the "+name+" check.\n")
+	}
+	p := &externalProbe{script: &script{}}
+
+	run(t, env, p, doctor.Options{DryRun: true})
+
+	if p.options == nil {
+		t.Fatal("external question not asked")
+	}
+	for _, opt := range p.options {
+		if strings.HasPrefix(opt, skills) || strings.HasPrefix(opt, linkedSkills) {
+			t.Errorf("blocked path listed: %s", opt)
+		}
+		if strings.HasPrefix(opt, commands+string(filepath.Separator)) {
+			t.Errorf("file not collapsed into its directory: %s", opt)
+		}
+	}
+	if !slices.Contains(p.options, commands) {
+		t.Errorf("commands directory not listed: %v", p.options)
+	}
+	if !slices.Contains(p.options, codexMD(env)) {
+		t.Errorf("written file not listed: %v", p.options)
 	}
 }
 
