@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	"github.com/antonL95/promptstor/internal/paths"
 )
 
 const (
@@ -13,12 +15,15 @@ const (
 	timerUnit   = "promptstor-check.timer"
 )
 
-var serviceTemplate = template.Must(template.New("service").Funcs(template.FuncMap{"exec": quoteExec}).Parse(`[Unit]
+var serviceTemplate = template.Must(template.New("service").Funcs(template.FuncMap{"quote": quoteUnit}).Parse(`[Unit]
 Description=PromptStor drift check
 
 [Service]
 Type=oneshot
-ExecStart=:{{exec .Binary}} doctor --check --notify
+{{- range .Variables}}
+Environment={{quote (printf "%s=%s" .Name .Value)}}
+{{- end}}
+ExecStart=:{{quote .Binary}} doctor --check --notify
 SuccessExitStatus=1
 `))
 
@@ -63,7 +68,10 @@ type commandError struct{ error }
 func (e commandError) Unwrap() error { return e.error }
 
 func (s systemd) enableTimer() error {
-	data := struct{ Binary string }{s.Binary}
+	data := struct {
+		Binary    string
+		Variables []paths.Variable
+	}{s.Binary, s.Env.LocationOverrides()}
 	if err := s.writeDefinition(s.unitPath(serviceUnit), serviceTemplate, data); err != nil {
 		return err
 	}
@@ -136,6 +144,6 @@ func (s systemd) unitPath(name string) string {
 
 func (s systemd) cron() cron { return cron(s) }
 
-func quoteExec(path string) string {
-	return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`, `%`, `%%`).Replace(path) + `"`
+func quoteUnit(value string) string {
+	return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`, `%`, `%%`).Replace(value) + `"`
 }

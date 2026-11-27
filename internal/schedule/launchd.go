@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+
+	"github.com/antonL95/promptstor/internal/paths"
 )
 
 const launchdLabel = "com.promptstor.check"
@@ -22,6 +24,15 @@ var plistTemplate = template.Must(template.New("plist").Funcs(template.FuncMap{"
 		<string>--check</string>
 		<string>--notify</string>
 	</array>
+{{- if .Variables}}
+	<key>EnvironmentVariables</key>
+	<dict>
+{{- range .Variables}}
+		<key>{{xml .Name}}</key>
+		<string>{{xml .Value}}</string>
+{{- end}}
+	</dict>
+{{- end}}
 	<key>StartInterval</key>
 	<integer>3600</integer>
 	<key>RunAtLoad</key>
@@ -41,7 +52,10 @@ func (l launchd) install() (string, error) {
 	if err := l.prepareLog(); err != nil {
 		return "", err
 	}
-	data := struct{ Label, Binary, Log string }{launchdLabel, l.Binary, l.Env.CheckLogPath()}
+	data := struct {
+		Label, Binary, Log string
+		Variables          []paths.Variable
+	}{launchdLabel, l.Binary, l.Env.CheckLogPath(), l.Env.LocationOverrides()}
 	if err := l.writeDefinition(path, plistTemplate, data); err != nil {
 		return "", err
 	}

@@ -41,6 +41,18 @@ func (e Env) Validate() error {
 	return nil
 }
 
+type Variable struct{ Name, Value string }
+
+func (e Env) LocationOverrides() []Variable {
+	var set []Variable
+	for _, name := range []string{"XDG_CONFIG_HOME", "XDG_STATE_HOME", "CODEX_HOME"} {
+		if value := e.variable(name); value != "" {
+			set = append(set, Variable{Name: name, Value: value})
+		}
+	}
+	return set
+}
+
 func (e Env) Expand(p string) string {
 	if p == "~" {
 		return e.Home

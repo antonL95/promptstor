@@ -32,7 +32,7 @@ func (c cron) install() error {
 	if next != "" && !strings.HasSuffix(next, "\n") {
 		next += "\n"
 	}
-	command := fmt.Sprintf("%s doctor --check --notify >> %s 2>&1 %s", quoteCron(c.Binary), quoteCron(c.Env.CheckLogPath()), cronTag)
+	command := fmt.Sprintf("%s%s doctor --check --notify >> %s 2>&1 %s", c.assignments(), quoteCron(c.Binary), quoteCron(c.Env.CheckLogPath()), cronTag)
 	for _, when := range cronTimes {
 		next += when + " " + command + "\n"
 	}
@@ -40,6 +40,14 @@ func (c cron) install() error {
 		return nil
 	}
 	return c.write(next)
+}
+
+func (c cron) assignments() string {
+	var prefix strings.Builder
+	for _, v := range c.Env.LocationOverrides() {
+		prefix.WriteString(v.Name + "=" + quoteCron(v.Value) + " ")
+	}
+	return prefix.String()
 }
 
 func (c cron) remove() error {

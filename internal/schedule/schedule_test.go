@@ -396,6 +396,57 @@ func TestScheduleNeverWritesThroughASymlink(t *testing.T) {
 	}
 }
 
+func withVariables(s schedule.Scheduler, values map[string]string) schedule.Scheduler {
+	s.Env.Getenv = func(name string) string { return values[name] }
+	return s
+}
+
+func TestScheduledJobCarriesXDGOverrides(t *testing.T) {
+	overrides := map[string]string{
+		"XDG_CONFIG_HOME": `/srv/dot files/<a&b>/100%/it's "here"\now`,
+		"XDG_STATE_HOME":  "/srv/state/$USER",
+		"CODEX_HOME":      "/srv/codex",
+		"UNRELATED":       "/srv/never",
+	}
+	t.Run("launchd", func(t *testing.T) {
+		s, _ := scheduler(t, "darwin")
+		s = withVariables(s, overrides)
+		install(t, s)
+		golden(t, s.Env, plistPath(s.Env), "overrides.plist")
+	})
+	t.Run("systemd", func(t *testing.T) {
+		s, _ := scheduler(t, "linux")
+		s = withVariables(s, overrides)
+		install(t, s)
+		golden(t, s.Env, unitPath(s.Env, "promptstor-check.service"), "overrides.service")
+	})
+	t.Run("cron", func(t *testing.T) {
+		s, m := scheduler(t, "linux")
+		s = withVariables(s, overrides)
+		m.failures["systemctl"] = errors.New("exit status 1")
+		install(t, s)
+		testenv.Golden(t, filepath.Join("testdata", "golden", "overrides.crontab"), []byte(strings.ReplaceAll(m.crontab, s.Env.Home, "HOME")))
+		remove(t, s)
+		if m.crontab != "" {
+			t.Errorf("crontab after remove %q", m.crontab)
+		}
+	})
+}
+
+func TestInstallRefusesAnOverrideWithControlCharacters(t *testing.T) {
+	for _, os := range []string{"darwin", "linux"} {
+		s, m := scheduler(t, os)
+		s = withVariables(s, map[string]string{"CODEX_HOME": "/srv/two\nlines"})
+		before := testenv.TreeHash(t, s.Env.Home)
+		if _, err := s.Install(); err == nil || !strings.Contains(err.Error(), "CODEX_HOME") {
+			t.Errorf("%s: %v", os, err)
+		}
+		if len(m.calls) != 0 || testenv.TreeHash(t, s.Env.Home) != before {
+			t.Errorf("%s wrote or ran %v", os, m.calls)
+		}
+	}
+}
+
 func TestWindowsDeferred(t *testing.T) {
 	s, m := scheduler(t, "windows")
 	s.Binary = ""

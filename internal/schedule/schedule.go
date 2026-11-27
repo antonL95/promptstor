@@ -48,6 +48,9 @@ func (s Scheduler) Install() (string, error) {
 	if err := s.checkBinary(); err != nil {
 		return "", err
 	}
+	if err := s.checkOverrides(); err != nil {
+		return "", err
+	}
 	return p.install()
 }
 
@@ -85,11 +88,22 @@ func (s Scheduler) platform() (platform, error) {
 }
 
 func (s Scheduler) checkBinary() error {
-	if !filepath.IsAbs(s.Binary) || strings.ContainsFunc(s.Binary, unicode.IsControl) {
+	if !filepath.IsAbs(s.Binary) || hasControl(s.Binary) {
 		return fmt.Errorf("cannot schedule checks: the path of the promptstor binary %q is unknown or unusable", s.Binary)
 	}
 	return nil
 }
+
+func (s Scheduler) checkOverrides() error {
+	for _, v := range s.Env.LocationOverrides() {
+		if hasControl(v.Value) {
+			return fmt.Errorf("cannot schedule checks: %s holds a control character", v.Name)
+		}
+	}
+	return nil
+}
+
+func hasControl(s string) bool { return strings.ContainsFunc(s, unicode.IsControl) }
 
 func (s Scheduler) run(name string, args ...string) ([]byte, error) {
 	out, err := s.Run(name, args...)
