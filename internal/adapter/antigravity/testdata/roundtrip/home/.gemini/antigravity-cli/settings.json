@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "deny": [
+      "command(git push --force)",
+      "read_file(/etc/example)",
+      "write_file(/etc/example)"
+    ]
+  }
+}

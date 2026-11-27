@@ -1,0 +1,62 @@
+items:
+- kind: rule
+  name: proto
+  order: 10
+  source: <project>/.agents/rules/proto.md
+  activation: files
+  scope:
+  - '*.proto'
+  targets:
+  - antigravity
+  body: |
+    Never reuse a field number.
+- kind: rule
+  name: Style
+  order: 10
+  source: <project>/.agents/rules/style.md
+  description: Project style
+  targets:
+  - antigravity
+  body: |
+    ## Style
+
+    Use tabs.
+
+    @[Notes](../notes.md)
+- kind: subagent
+  name: docs-writer
+  source: <project>/.agents/agents/docs-writer.md
+  description: Writes docs.
+  meta:
+    antigravity_subagent: true
+  body: |
+    Write the docs.
+- kind: skill
+  name: project-skill
+  source: <project>/.agents/skills/project-skill
+  description: A project skill.
+  body: |
+    Do the project thing.
+- kind: mcp
+  name: project-docs
+  source: <project>/.agents/mcp_config.json
+  mcp:
+    transport: stdio
+    command: example-project-docs
+    url: ""
+    args: []
+    env: {}
+    headers: {}
+    resolve: false
+notes:
+- path: <project>/.agents/hooks.json
+  message: project hooks are not managed; not imported
+- path: <project>/.agents/mcp_config.json
+  message: 'server project-docs: field cwd not imported'
+- path: <project>/.agents/workflows
+  message: deprecated workflows; not imported
+unresolved:
+- file: <project>/.agents/rules/style.md
+  line: "9"
+  target: '[Notes](../notes.md)'
+  reason: unconfirmed syntax

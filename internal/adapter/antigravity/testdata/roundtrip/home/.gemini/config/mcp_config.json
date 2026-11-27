@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "tracker": {
+      "command": "example-tracker",
+      "args": ["--verbose"],
+      "env": { "MODE": "readonly" },
+      "disabled": false
+    },
+    "remote": {
+      "serverUrl": "https://mcp.example.com/mcp"
+    }
+  }
+}

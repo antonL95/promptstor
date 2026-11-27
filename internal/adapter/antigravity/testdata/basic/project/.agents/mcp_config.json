@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "project-docs": {
+      "command": "example-project-docs",
+      "cwd": "/work/example"
+    }
+  }
+}

@@ -1,0 +1,4 @@
+---
+trigger: alwaysOn
+---
+Never loaded.

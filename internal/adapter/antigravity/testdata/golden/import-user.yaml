@@ -1,0 +1,206 @@
+items:
+- kind: rule
+  name: Go style
+  order: 10
+  source: <home>/.gemini/config/rules/go-style.md
+  description: Go style
+  activation: files
+  scope:
+  - '**/*.go'
+  - '**/go.mod'
+  body: |
+    ## Go style
+
+    Use table driven tests.
+- kind: rule
+  name: release
+  order: 10
+  source: <home>/.gemini/config/rules/release.md
+  description: Use when preparing a release.
+  activation: agent
+  body: |
+    Update the changelog.
+
+    @[Release checklist](../checklists/release.md)
+
+    ```
+    @[Fenced](not-an-include.md)
+    ```
+- kind: rule
+  name: Antigravity notes
+  order: 10
+  source: <home>/.gemini/config/AGENTS.md
+  body: |
+    ## Antigravity notes
+
+    Plan before editing.
+    @[Style](~/notes/style.md)
+- kind: rule
+  name: Reviews
+  order: 10
+  source: <home>/.gemini/GEMINI.md
+  body: |
+    ## Reviews
+
+    Be critical.
+- kind: subagent
+  name: reviewer
+  source: <home>/.gemini/config/agents/reviewer.md
+  description: Reviews diffs.
+  meta:
+    antigravity_command_execution_policy: sandbox
+    antigravity_main_agent: false
+    antigravity_model: pro
+    antigravity_tools:
+    - view_file
+    - grep_search
+  body: |
+    Be strict.
+- kind: subagent
+  name: auditor
+  source: <home>/.gemini/config/agents/auditor/agent.md
+  description: Audits changes.
+  body: |
+    Audit.
+- kind: skill
+  name: release-notes
+  source: <home>/.gemini/config/skills/release-notes
+  description: Draft release notes.
+  files:
+  - scripts/run.sh 0644
+  body: |
+    Summarise the changes.
+- kind: permission
+  name: Antigravity permissions
+  source: <home>/.gemini/antigravity-cli/settings.json
+  portable:
+    denycommands:
+    - git push --force
+    denypaths:
+    - /etc/example
+    allowmcpservers: []
+- kind: hook
+  name: guard-writes
+  source: <home>/.gemini/config/hooks.json
+  native:
+    antigravity:
+      PreToolUse:
+      - hooks:
+        - command: /opt/example/hooks/guard.sh
+        matcher: write_to_file
+      enabled: false
+- kind: hook
+  name: session-note
+  source: <home>/.gemini/config/hooks.json
+  native:
+    antigravity:
+      SessionStart:
+      - command: /opt/example/hooks/note.sh
+        timeout: 10
+        type: command
+- kind: mcp
+  name: docs
+  source: <home>/.gemini/config/mcp_config.json
+  mcp:
+    transport: stdio
+    command: example-docs
+    url: ""
+    args:
+    - --stdio
+    env:
+      DOCS_TOKEN:
+        literal: ""
+        ref: needs-setup:DOCS_TOKEN
+      MODE:
+        literal: readonly
+        ref: ""
+    headers: {}
+    resolve: false
+- kind: mcp
+  name: remote
+  source: <home>/.gemini/config/mcp_config.json
+  mcp:
+    transport: http
+    command: ""
+    url: https://mcp.example.com/mcp
+    args: []
+    env: {}
+    headers:
+      Authorization:
+        literal: ""
+        ref: needs-setup:Authorization
+    resolve: false
+- kind: mcp
+  name: signed
+  source: <home>/.gemini/config/mcp_config.json
+  mcp:
+    transport: http
+    command: ""
+    url: https://signed.example.com/mcp
+    args: []
+    env: {}
+    headers: {}
+    resolve: false
+foreign:
+- path: <home>/.gemini/antigravity/builtin
+  owner: antigravity builtin
+  reason: shipped with Antigravity and rewritten by it
+- path: <home>/.gemini/config/import_manifest.json
+  owner: antigravity importer
+  reason: record of imported setups; Antigravity writes it
+- path: <home>/.gemini/config/plugins/migrated-settings
+  owner: antigravity plugins
+  reason: installed or imported plugin; Antigravity manages it
+grants:
+- tool: antigravity
+  path: <home>/.gemini/antigravity-cli/settings.json
+  key: /permissions/allow@=command(git status)
+  value: command(git status)
+- tool: antigravity
+  path: <home>/.gemini/antigravity-cli/settings.json
+  key: /permissions/allow@=mcp(docs/*)
+  value: mcp(docs/*)
+notes:
+- path: <home>/.gemini/GEMINI.md
+  message: shared with Gemini CLI
+- path: <home>/.gemini/antigravity-cli/settings.json
+  message: permissions.ask is not imported
+- path: <home>/.gemini/antigravity-cli/settings.json
+  message: permissions.deny entry "command(regex:curl .*)" is not portable; not imported
+- path: <home>/.gemini/antigravity-cli/settings.json
+  message: permissions.deny entry "write_file(.git/)" is not portable; not imported
+- path: <home>/.gemini/antigravity-cli/settings.json
+  message: permissions.deny entry "read_url(example.com)" is not portable; not imported
+- path: <home>/.gemini/antigravity-cli/skills
+  message: skills that only one Antigravity surface reads; not imported
+- path: <home>/.gemini/config/agents/reviewer.md
+  message: field mcpServers not imported
+- path: <home>/.gemini/config/global_workflows
+  message: deprecated workflows; not imported
+- path: <home>/.gemini/config/mcp_config.json
+  message: 'server docs: field timeoutSeconds not imported'
+- path: <home>/.gemini/config/mcp_config.json
+  message: 'server docs: secret scrubbed, env/DOCS_TOKEN'
+- path: <home>/.gemini/config/mcp_config.json
+  message: 'server off: disabled; not imported'
+- path: <home>/.gemini/config/mcp_config.json
+  message: 'server old: httpUrl is not supported by Antigravity; not imported'
+- path: <home>/.gemini/config/mcp_config.json
+  message: 'server remote: secret scrubbed, headers/Authorization'
+- path: <home>/.gemini/config/mcp_config.json
+  message: 'server signed: field oauth not imported'
+- path: <home>/.gemini/config/plugins
+  message: plugins may duplicate items PromptStor manages and may hold literal secrets; not read
+- path: <home>/.gemini/config/rules/audit.md
+  message: manual rules have no PromptStor activation; not imported
+- path: <home>/.gemini/config/rules/camel.md
+  message: Antigravity discards a rule without a valid trigger; not imported
+unresolved:
+- file: <home>/.gemini/config/rules/release.md
+  line: "7"
+  target: '[Release checklist](../checklists/release.md)'
+  reason: unconfirmed syntax
+- file: <home>/.gemini/config/AGENTS.md
+  line: "4"
+  target: '[Style](~/notes/style.md)'
+  reason: unconfirmed syntax

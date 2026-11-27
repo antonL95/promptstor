@@ -12,6 +12,7 @@ import (
 
 	"github.com/tailscale/hujson"
 
+	"github.com/antonL95/promptstor/internal/adapter"
 	"github.com/antonL95/promptstor/internal/backup"
 	"github.com/antonL95/promptstor/internal/paths"
 )
@@ -56,6 +57,11 @@ func textList(value any) []string {
 		}
 	}
 	return found
+}
+
+func UserMemoryFile(env paths.Env) (path, reason string) {
+	l, _ := layoutFor(adapter.Target{Env: env, Scope: adapter.ScopeUser})
+	return l.memoryFile(env)
 }
 
 func (l layout) memoryFile(env paths.Env) (path, reason string) {
