@@ -157,6 +157,21 @@ func matchingElements(array *hujson.Array, key manifest.Key) ([]int, error) {
 	return matches, nil
 }
 
+func checkSelected(value []byte, key manifest.Key) error {
+	parsed, err := hujson.Parse(slices.Clone(value))
+	if err != nil {
+		return jsonSyntaxError(err)
+	}
+	matches, err := elementMatches(&parsed, key)
+	if err != nil {
+		return fmt.Errorf("check value against selector: %w", err)
+	}
+	if !matches {
+		return errors.New("value does not match the selector of the key")
+	}
+	return nil
+}
+
 func elementMatches(element *hujson.Value, key manifest.Key) (bool, error) {
 	switch key.Form {
 	case manifest.KeyFormScalar:

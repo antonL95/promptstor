@@ -276,15 +276,73 @@ func TestJSONElementHashIdentity(t *testing.T) {
 	}
 	key := "/hooks/PreToolUse@#" + hash
 	mustGet(t, doc, key)
-	set := jsonSet(t, doc, key, `{"matcher":"Edit"}`)
-	assertBytes(t, set, replaceOnce(t, doc,
-		"{\n        \"matcher\": \"Bash\",\n        \"hooks\": [{ \"type\": \"command\", \"command\": \"echo example\" }]\n      }",
-		"{\n        \"matcher\": \"Edit\"\n      }"))
+	assertBytes(t, jsonSet(t, doc, key, `{"matcher":"Bash","hooks":[{"type":"command","command":"echo example"}]}`), string(doc))
 	deleted := jsonDelete(t, doc, key)
 	if _, found, err := JSONGet(deleted, key); found || err != nil {
 		t.Errorf("element still found: %v %v", found, err)
 	}
 	assertSameJSON(t, mustGet(t, deleted, "/hooks/PreToolUse"), `[]`)
+}
+
+func TestPointerWithAtInMemberName(t *testing.T) {
+	doc := []byte("{\n  \"enabledPlugins\": {\n    \"other@market\": true\n  }\n}\n")
+	key := "/enabledPlugins/x@y"
+	set := jsonSet(t, doc, key, `false`)
+	assertBytes(t, set, "{\n  \"enabledPlugins\": {\n    \"other@market\": true,\n    \"x@y\": false\n  }\n}\n")
+	assertBytes(t, mustGet(t, set, key), "false")
+	assertBytes(t, jsonSet(t, set, key, `true`), strings.Replace(string(set), "false", "true", 1))
+	assertBytes(t, jsonDelete(t, set, key), string(doc))
+}
+
+func TestElementSelectorFormsStillParse(t *testing.T) {
+	hash := strings.Repeat("a", 64)
+	elements := []string{"@=x", "/a@=x", "/a/b@=x@y", "/a@/name=x", "/a@/name=x@y", "/a@#" + hash}
+	for _, key := range elements {
+		parsed, err := parseJSONKey(key)
+		if err != nil || !parsed.element {
+			t.Errorf("%q: want an element key, got element %v, err %v", key, parsed.element, err)
+		}
+	}
+	pointers := []string{"/enabledPlugins/name@marketplace", "/a@", "/a@b@=x", "/a@b/c@/d=x", "/@scope/pkg"}
+	for _, key := range pointers {
+		parsed, err := parseJSONKey(key)
+		if err != nil || parsed.element || parsed.Pointer != key {
+			t.Errorf("%q: want a plain pointer, got %+v, err %v", key, parsed, err)
+		}
+	}
+}
+
+func TestElementSetRefusesValueNotMatchingSelector(t *testing.T) {
+	doc := fixture(t, "settings.json")
+	hash, err := manifest.Hash(manifest.UnitJSONElement, []byte(`{"matcher":"Bash"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct{ name, key, value string }{
+		{"scalar other string", "/permissions/allow@=Bash(pwd)", `"secretvalue"`},
+		{"scalar not a string", "/permissions/allow@=1", `1`},
+		{"sub other string", "/hooks/PreToolUse@/matcher=Bash", `{"matcher":"secretvalue"}`},
+		{"sub missing", "/hooks/PreToolUse@/matcher=Bash", `{"other":"Bash"}`},
+		{"sub not an object", "/hooks/PreToolUse@/matcher=Bash", `"Bash"`},
+		{"hash differs", "/hooks/PreToolUse@#" + hash, `{"matcher":"secretvalue"}`},
+		{"missing array", "/hooks/Stop@=a", `"b"`},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			out, err := JSONSet(doc, c.key, []byte(c.value))
+			if err == nil || !strings.Contains(err.Error(), "selector") {
+				t.Fatalf("want a selector error, got %v", err)
+			}
+			if out != nil {
+				t.Error("a refused set must return no document")
+			}
+			if strings.Contains(err.Error(), "secretvalue") {
+				t.Error("error repeats the value")
+			}
+		})
+	}
+	appended := jsonSet(t, doc, "/hooks/PreToolUse@#"+hash, `{ "matcher": "Bash" }`)
+	assertBytes(t, jsonSet(t, appended, "/hooks/PreToolUse@#"+hash, `{"matcher":"Bash"}`), string(appended))
 }
 
 const docsBlock = "[mcp_servers.docs]\ncommand = \"other-server\"\n\n[mcp_servers.docs.env]\nLEVEL = \"info\"\n"

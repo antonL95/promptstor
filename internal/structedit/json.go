@@ -45,7 +45,7 @@ type jsonKey struct {
 
 func parseJSONKey(key string) (jsonKey, error) {
 	unit := manifest.UnitJSON
-	element := strings.Contains(key, "@")
+	element := isElementKey(key)
 	if element {
 		unit = manifest.UnitJSONElement
 	}
@@ -54,6 +54,14 @@ func parseJSONKey(key string) (jsonKey, error) {
 		return jsonKey{}, err
 	}
 	return jsonKey{Key: parsed, segments: pointerSegments(parsed.Pointer), element: element}, nil
+}
+
+func isElementKey(key string) bool {
+	pointer, selector, found := strings.Cut(key, "@")
+	if !found || (pointer != "" && !strings.HasPrefix(pointer, "/")) {
+		return false
+	}
+	return selector != "" && strings.ContainsRune("=/#", rune(selector[0]))
 }
 
 func parseEditKey(key string) (jsonKey, error) {
@@ -98,6 +106,11 @@ func writeKey(doc []byte, key string, value []byte) ([]byte, error) {
 	}
 	if !json.Valid(value) || !utf8.Valid(value) {
 		return nil, errors.New("value is not strict JSON")
+	}
+	if parsed.element {
+		if err := checkSelected(value, parsed.Key); err != nil {
+			return nil, err
+		}
 	}
 	source := doc
 	if isBlank(doc) {
