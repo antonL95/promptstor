@@ -43,15 +43,25 @@ func decideEdit(m manifest.Manifest, e Edit) (manifest.Entry, bool) {
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return manifest.Entry{}, false
 	}
-	after, applies := apply(before, exists, e)
-	if !applies {
-		return manifest.Entry{}, false
+	steps := e.Steps
+	if len(steps) == 0 {
+		steps = []Edit{e}
+	}
+	doc, present := before, exists
+	touchesSection := false
+	for _, step := range steps {
+		touchesSection = touchesSection || overlapsSection(doc, step.OldText)
+		next, applies := apply(doc, present, step)
+		if !applies {
+			return manifest.Entry{}, false
+		}
+		doc, present = next, true
 	}
 	for _, entry := range entries {
-		if entry.Unit == manifest.UnitSection && overlapsSection(before, e.OldText) {
+		if entry.Unit == manifest.UnitSection && touchesSection {
 			return entry, true
 		}
-		if unitChanges(entry, before, exists, after) {
+		if unitChanges(entry, before, exists, doc) {
 			return entry, true
 		}
 	}
@@ -59,7 +69,7 @@ func decideEdit(m manifest.Manifest, e Edit) (manifest.Entry, bool) {
 }
 
 func pathOnly(e Edit) bool {
-	return e.WholeContent == nil && e.OldText == nil && e.NewText == nil
+	return e.WholeContent == nil && e.OldText == nil && e.NewText == nil && len(e.Steps) == 0
 }
 
 func apply(before []byte, exists bool, e Edit) ([]byte, bool) {

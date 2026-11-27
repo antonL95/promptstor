@@ -24,6 +24,7 @@ type Edit struct {
 	Path             string
 	OldText, NewText []byte
 	WholeContent     []byte
+	Steps            []Edit
 	Delete           bool
 	Opaque           bool
 }
@@ -99,11 +100,15 @@ func multiEdit(cwd string, input fileInput) []Edit {
 	if len(input.Edits) == 0 {
 		return single(cwd, input.FilePath, replaceEdit(input.OldString, input.NewString))
 	}
-	var edits []Edit
+	var steps []Edit
 	for _, e := range input.Edits {
-		edits = append(edits, single(cwd, input.FilePath, replaceEdit(e.OldString, e.NewString))...)
+		step := replaceEdit(e.OldString, e.NewString)
+		if pathOnly(step) {
+			return single(cwd, input.FilePath, Edit{})
+		}
+		steps = append(steps, step)
 	}
-	return edits
+	return single(cwd, input.FilePath, Edit{Steps: steps})
 }
 
 func parseGemini(payload []byte) ([]Edit, error) {

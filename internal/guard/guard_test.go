@@ -164,6 +164,55 @@ func TestClaudeBlocksWholeWriteChangingSection(t *testing.T) {
 	wantBlocked(t, block, reason, filepath.Join(env.Home, ".claude/CLAUDE.md"), ruleID)
 }
 
+func multiEditPayload(t *testing.T, path string, edits ...[2]string) []byte {
+	t.Helper()
+	var list []map[string]any
+	for _, e := range edits {
+		list = append(list, map[string]any{"old_string": e[0], "new_string": e[1]})
+	}
+	data, err := json.Marshal(map[string]any{
+		"cwd": filepath.Dir(path), "hook_event_name": "PreToolUse", "tool_name": "MultiEdit",
+		"tool_input": map[string]any{"file_path": path, "edits": list},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data
+}
+
+func TestClaudeMultiEditAppliesSubEditsInSequence(t *testing.T) {
+	env, m := fixture(t)
+	path := filepath.Join(env.Home, ".claude/CLAUDE.md")
+	tests := map[string]struct {
+		edits   [][2]string
+		blocked bool
+	}{
+		"second edit reaches the section only after the first": {
+			edits: [][2]string{
+				{"Prefer short answers.", "Prefer short answers. MARKER"},
+				{"MARKER\n\n<!-- promptstor:begin -->", "MARKER\n\n<!-- promptstor:gone -->"},
+			},
+			blocked: true,
+		},
+		"both edits stay outside the section": {
+			edits: [][2]string{
+				{"Prefer short answers.", "Prefer short answers. MARKER"},
+				{"answers. MARKER", "answers, always."},
+			},
+		},
+	}
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			block, reason := decide(t, m, "claude-code", multiEditPayload(t, path, tc.edits...))
+			if tc.blocked {
+				wantBlocked(t, block, reason, path, ruleID)
+				return
+			}
+			wantAllowed(t, block, reason)
+		})
+	}
+}
+
 func TestClaudeAllowsWholeWriteKeepingSection(t *testing.T) {
 	env, m := fixture(t)
 	path := filepath.Join(env.Home, ".claude/CLAUDE.md")
