@@ -295,3 +295,172 @@ func TestScrubRemovesLiteralsAndNormalisesInterpolation(t *testing.T) {
 		t.Error("input was mutated")
 	}
 }
+
+func checkStrings(t *testing.T, field string, got, want []string) {
+	t.Helper()
+	if len(got) != len(want) {
+		t.Fatalf("%s has %d entries, want %d", field, len(got), len(want))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("%s %d was handled wrongly, want %q", field, i, want[i])
+		}
+	}
+}
+
+func TestScrubArgsSecretFlag(t *testing.T) {
+	server := library.MCPServer{
+		Command: "$BIN",
+		Args: []string{
+			"--api-key=" + literalSecret,
+			"--authToken", literalSecret,
+			"--client-secret", "-" + literalSecret,
+			"--password=$PW",
+			"--session", "${SESSION:-" + literalSecret + "}",
+			"--token=",
+			"--no-auth", "--verbose",
+			"--use-cookie", "-v",
+			"--port=8080",
+			"--root", "{env:ROOT}",
+			"--home=$HOME",
+			"--APIKey", literalSecret,
+			"awk $1",
+			"--secret",
+		},
+	}
+	original := slices.Clone(server.Args)
+	out, notes := Scrub(server)
+	checkStrings(t, "args", out.Args, []string{
+		"--api-key=${env:API_KEY}",
+		"--authToken", "${env:AUTH_TOKEN}",
+		"--client-secret", "${env:CLIENT_SECRET}",
+		"--password=${env:PW}",
+		"--session", "${env:SESSION}",
+		"--token=",
+		"--no-auth", "--verbose",
+		"--use-cookie", "-v",
+		"--port=8080",
+		"--root", "${env:ROOT}",
+		"--home=${env:HOME}",
+		"--APIKey", "${env:API_KEY}",
+		"awk $1",
+		"--secret",
+	})
+	if out.Command != "${env:BIN}" {
+		t.Error("command was not normalised")
+	}
+	if want := []string{"set API_KEY", "set AUTH_TOKEN", "set CLIENT_SECRET"}; !slices.Equal(notes, want) {
+		t.Errorf("notes = %v", notes)
+	}
+	if !slices.Equal(server.Args, original) {
+		t.Error("input was mutated")
+	}
+}
+
+func TestScrubURLQueryAndUserinfo(t *testing.T) {
+	server := library.MCPServer{
+		URL: "https://user:" + literalSecret + "@example.invalid/mcp?team=a&api_key=" + literalSecret + "&access%5Ftoken=" + literalSecret + "&auth=$AUTH&key=#part",
+		Args: []string{
+			"postgres://user:p@" + literalSecret + "@db.invalid:5432/app",
+			"--database-url=postgres://user:" + literalSecret + "@db.invalid/app",
+			"--redis-url", "redis://:" + literalSecret + "@cache.invalid",
+			"https://example.invalid/?token=" + literalSecret,
+			"https://${USER}:$PW@example.invalid",
+			"https://user@example.invalid:8080/a:b@c",
+		},
+		Env: map[string]library.Value{
+			"DATABASE_URL": literal("postgres://user:" + literalSecret + "@db.invalid/app"),
+			"SESSION_URL":  literal("redis://:" + literalSecret + "@cache.invalid"),
+			"PROXY":        literal("http://{env:PROXY_USER}:${PROXY_PASS:-" + literalSecret + "}@proxy.invalid"),
+			"PLAIN_URL":    literal("https://example.invalid/a"),
+		},
+		Headers: map[string]library.Value{"X-Upstream": literal("https://user:" + literalSecret + "@example.invalid")},
+	}
+	out, notes := Scrub(server)
+	if out.URL != "https://user:${env:URL_PASSWORD}@example.invalid/mcp?team=a&api_key=${env:API_KEY}&access%5Ftoken=${env:ACCESS_TOKEN}&auth=${env:AUTH}&key=#part" {
+		t.Error("url was scrubbed wrongly")
+	}
+	checkStrings(t, "args", out.Args, []string{
+		"postgres://user:${env:ARG_PASSWORD}@db.invalid:5432/app",
+		"--database-url=postgres://user:${env:DATABASE_URL_PASSWORD}@db.invalid/app",
+		"--redis-url", "redis://:${env:REDIS_URL_PASSWORD}@cache.invalid",
+		"https://example.invalid/?token=${env:TOKEN}",
+		"https://${env:USER}:${env:PW}@example.invalid",
+		"https://user@example.invalid:8080/a:b@c",
+	})
+	for name, want := range map[string]string{
+		"DATABASE_URL": "postgres://user:${env:DATABASE_URL_PASSWORD}@db.invalid/app",
+		"SESSION_URL":  "redis://:${env:SESSION_URL_PASSWORD}@cache.invalid",
+		"PROXY":        "http://${env:PROXY_USER}:${env:PROXY_PASS}@proxy.invalid",
+		"PLAIN_URL":    "https://example.invalid/a",
+	} {
+		if out.Env[name] != literal(want) {
+			t.Errorf("env %s was scrubbed wrongly", name)
+		}
+	}
+	if out.Headers["X-Upstream"] != literal("https://user:${env:X_UPSTREAM_PASSWORD}@example.invalid") {
+		t.Error("header was scrubbed wrongly")
+	}
+	want := []string{
+		"set ACCESS_TOKEN", "set API_KEY", "set ARG_PASSWORD", "set DATABASE_URL_PASSWORD", "set REDIS_URL_PASSWORD",
+		"set SESSION_URL_PASSWORD", "set TOKEN", "set URL_PASSWORD", "set X_UPSTREAM_PASSWORD",
+	}
+	if !slices.Equal(notes, want) {
+		t.Errorf("notes = %v", notes)
+	}
+}
+
+func TestPrepareRendersPlaceholdersInArgsAndURL(t *testing.T) {
+	server := library.MCPServer{
+		Command: "${env:BIN}",
+		URL:     "https://example.invalid/?key=${env:API_KEY}",
+		Args:    []string{"--api-key=${env:API_KEY}", "plain"},
+	}
+	original := slices.Clone(server.Args)
+
+	out, secretKeys, needsSetup, err := Prepare(server, cursorRef, fakeResolver{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(out, server) || secretKeys != nil || needsSetup != nil {
+		t.Errorf("out = %+v, secretKeys = %v, needsSetup = %v", out, secretKeys, needsSetup)
+	}
+	braced, _, _, err := Prepare(server, func(name string) string { return "{env:" + name + "}" }, fakeResolver{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkStrings(t, "args", braced.Args, []string{"--api-key={env:API_KEY}", "plain"})
+	if braced.Command != "{env:BIN}" || braced.URL != "https://example.invalid/?key={env:API_KEY}" {
+		t.Errorf("command = %q, url = %q", braced.Command, braced.URL)
+	}
+
+	keys := []string{"args/0", "command", "url"}
+	out, _, needsSetup, err = Prepare(server, nil, fakeResolver{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(needsSetup, keys) || !reflect.DeepEqual(out, library.MCPServer{}) {
+		t.Errorf("needsSetup = %v", needsSetup)
+	}
+
+	server.Resolve = true
+	out, secretKeys, needsSetup, err = Prepare(server, nil, fakeResolver{"env:BIN": "bin", "env:API_KEY": "resolved"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(secretKeys, keys) || needsSetup != nil {
+		t.Errorf("secretKeys = %v, needsSetup = %v", secretKeys, needsSetup)
+	}
+	checkStrings(t, "args", out.Args, []string{"--api-key=resolved", "plain"})
+	if out.Command != "bin" || out.URL != "https://example.invalid/?key=resolved" {
+		t.Error("values were not resolved")
+	}
+	if !slices.Equal(server.Args, original) {
+		t.Error("input was mutated")
+	}
+
+	_, _, _, err = Prepare(server, nil, fakeResolver{"env:BIN": "bin"})
+	if err == nil || !strings.Contains(err.Error(), "args/0") || !strings.Contains(err.Error(), "env:API_KEY") {
+		t.Errorf("error = %v", err)
+	}
+}
