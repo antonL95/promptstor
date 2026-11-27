@@ -118,6 +118,12 @@ func (r *resolver) visit(path string, depth int) error {
 	return nil
 }
 
+func TargetPath(env paths.Env, from string, found Import, syn Syntax) (string, bool) {
+	r := &resolver{env: env, syn: syn}
+	target, reason := r.target(filepath.Clean(from), found)
+	return target, reason == ""
+}
+
 func (r *resolver) target(from string, found Import) (string, string) {
 	if found.Path == "" || strings.Contains(found.Path, "://") {
 		return "", ReasonSyntax

@@ -70,7 +70,11 @@ func (d *doctor) compareAndPull(s *firstRunState) error {
 }
 
 func (d *doctor) adopt(s *firstRunState) error {
-	s.moves = d.collectMoves(s.scopes, s.cands, s.selected)
+	moves, err := d.collectMoves(s.scopes, s.cands, s.selected)
+	if err != nil {
+		return err
+	}
+	s.moves = moves
 	if err := d.askMoves(s.moves); err != nil {
 		return err
 	}

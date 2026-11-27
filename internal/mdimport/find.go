@@ -27,7 +27,7 @@ func StripImportLines(doc []byte, syn Syntax) []byte {
 	lines := strings.SplitAfter(string(doc), "\n")
 	dropped := false
 	scan(doc, func(number int, line string, inFence bool) {
-		if !inFence && onlyImports(line, syn) {
+		if !inFence && OnlyImports(line, syn) {
 			dropped = true
 			return
 		}
@@ -69,7 +69,7 @@ func lineImports(number int, line string, syn Syntax) []Import {
 	return found
 }
 
-func onlyImports(line string, syn Syntax) bool {
+func OnlyImports(line string, syn Syntax) bool {
 	rest := strings.TrimSpace(withoutCodeSpans(line))
 	if rest == "" {
 		return false

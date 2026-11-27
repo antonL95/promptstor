@@ -39,9 +39,7 @@ func (d *doctor) changedFileEntries(s *firstRunState) []plan.SnapshotEntry {
 	var entries []plan.SnapshotEntry
 	for _, m := range s.moves {
 		if m.accepted {
-			for _, r := range m.rules {
-				entries = mergeEntries(entries, []plan.SnapshotEntry{{Tool: r.owner.tool, Path: m.path, Root: m.root}})
-			}
+			entries = mergeEntries(entries, []plan.SnapshotEntry{{Tool: m.reader, Path: m.path, Root: m.root}})
 		}
 	}
 	for _, del := range s.adoption.deletions {
