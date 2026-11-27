@@ -1,28 +1,18 @@
 package cli
 
 import (
-	"encoding/json"
-	"errors"
-	"fmt"
 	"io"
-	"io/fs"
 	"maps"
-	"os"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/antonL95/promptstor/internal/drift"
 	"github.com/antonL95/promptstor/internal/engine"
+	"github.com/antonL95/promptstor/internal/paths"
 )
-
-type lastCheck struct {
-	Checked  time.Time `json:"checked"`
-	Findings []struct {
-		Kind string `json:"kind"`
-	} `json:"findings"`
-}
 
 func newStatusCommand(d Deps) *cobra.Command {
 	return &cobra.Command{
@@ -41,7 +31,7 @@ func newStatusCommand(d Deps) *cobra.Command {
 
 func printStatus(out io.Writer, e engine.Engine) error {
 	w := &printer{w: out}
-	if err := printLastCheck(w, e.Env.LastCheckPath()); err != nil {
+	if err := printLastCheck(w, e.Env); err != nil {
 		return err
 	}
 	merged, _, err := e.Library("")
@@ -57,26 +47,18 @@ func printStatus(out io.Writer, e engine.Engine) error {
 	return w.done()
 }
 
-func printLastCheck(w *printer, path string) error {
-	data, err := os.ReadFile(path)
-	if errors.Is(err, fs.ErrNotExist) {
+func printLastCheck(w *printer, env paths.Env) error {
+	check, found, err := drift.ReadLastCheck(env)
+	if err != nil {
+		return err
+	}
+	if !found {
 		w.printf("no check has run yet\n")
 		return nil
 	}
-	if err != nil {
-		return fmt.Errorf("read %s: %w", path, err)
-	}
-	var check lastCheck
-	if err := json.Unmarshal(data, &check); err != nil {
-		return fmt.Errorf("read %s: %w", path, err)
-	}
 	w.printf("last check: %s\n", check.Checked.UTC().Format(time.RFC3339))
-	counts := map[string]int{}
-	for _, finding := range check.Findings {
-		counts[finding.Kind]++
-	}
-	for _, kind := range slices.Sorted(maps.Keys(counts)) {
-		w.printf("  %s: %d\n", kind, counts[kind])
+	for _, kind := range slices.Sorted(maps.Keys(check.Counts)) {
+		w.printf("  %s: %d\n", kind, check.Counts[kind])
 	}
 	return nil
 }

@@ -276,11 +276,11 @@ func TestStatusWithoutCheck(t *testing.T) {
 
 func TestStatusCountsFindings(t *testing.T) {
 	env := cliHome(t)
-	writeFile(t, env.LastCheckPath(), `{"checked":"2026-11-27T09:30:00Z","findings":[{"kind":"drift"},{"kind":"info"},{"kind":"drift"}]}`)
+	writeFile(t, env.LastCheckPath(), `{"checked":"2026-11-27T09:30:00Z","library_hash":"0f3c9a","clean":false,"fingerprint":"4e1d","counts":{"pending":2,"info":1}}`)
 
 	out := mustRun(t, deps(env), "status")
 
-	want := "last check: 2026-11-27T09:30:00Z\n  drift: 2\n  info: 1\n"
+	want := "last check: 2026-11-27T09:30:00Z\n  info: 1\n  pending: 2\n"
 	if !strings.Contains(out, want) {
 		t.Errorf("output lacks\n%s\ngot\n%s", want, out)
 	}

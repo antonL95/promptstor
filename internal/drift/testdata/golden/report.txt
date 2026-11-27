@@ -1,0 +1,17 @@
+pending (1)
+  claude-code  /fixture/home/.claude/CLAUDE.md  library changed (Plain language)
+
+hand-edit (1)
+  gemini-cli  /fixture/home/.gemini/GEMINI.md  agent memory write (Plain language)
+
+unsupported (1)
+  codex  guard  acknowledged: deny commands cannot be expressed
+
+ack-required (1)
+  cursor  guard  deny commands cannot be expressed
+
+runtime-grant (1)
+  claude-code  Bash(git status)  /permissions/allow@=Bash(git status)
+
+info (1)
+  -  /fixture/home/.agents/skills  loaded twice by cursor, opencode
