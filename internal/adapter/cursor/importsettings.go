@@ -10,6 +10,7 @@ import (
 
 	"github.com/antonL95/promptstor/internal/adapter"
 	"github.com/antonL95/promptstor/internal/library"
+	"github.com/antonL95/promptstor/internal/secrets"
 )
 
 const (
@@ -136,6 +137,10 @@ func (im *importer) hookItem(path, event string, definition map[string]any, used
 	}
 	if used[name]++; used[name] > 1 {
 		name = fmt.Sprintf("%s %d", name, used[name])
+	}
+	if secrets.HoldsLiteral(native) {
+		im.note(path, adapter.NoteHookSecret, name)
+		return
 	}
 	im.out.Items = append(im.out.Items, library.Item{Kind: library.KindHook, Name: name, Source: path, Native: map[string]any{tool: native}})
 }

@@ -59,6 +59,8 @@ type Grant struct {
 
 type Note struct{ Path, Message string }
 
+const NoteHookSecret = "hook %s holds a literal secret; set it up by hand"
+
 type Unresolved struct{ File, Line, Target, Reason string }
 
 type Imported struct {

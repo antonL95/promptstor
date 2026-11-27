@@ -464,3 +464,34 @@ func TestPrepareRendersPlaceholdersInArgsAndURL(t *testing.T) {
 		t.Errorf("error = %v", err)
 	}
 }
+
+func TestHoldsLiteralInHookCommands(t *testing.T) {
+	tests := map[string]struct {
+		native any
+		want   bool
+	}{
+		"plain script":             {"~/.claude/hooks/guard.sh", false},
+		"bearer header":            {`curl -H "Authorization: Bearer ` + literalSecret + `" https://hooks.example.com`, true},
+		"bearer from variable":     {`curl -H "Authorization: Bearer $NOTIFY_TOKEN" https://hooks.example.com`, false},
+		"bearer from placeholder":  {`curl -H 'Authorization: Bearer ${NOTIFY_TOKEN}' https://hooks.example.com`, false},
+		"api key header":           {`curl -H 'X-Api-Key: ` + literalSecret + `' https://hooks.example.com`, true},
+		"secret flag value":        {`notify --token=` + literalSecret, true},
+		"secret flag next word":    {`notify --api-key ` + literalSecret + ` --quiet`, true},
+		"secret flag variable":     {`notify --api-key "$API_KEY"`, false},
+		"url userinfo":             {`curl https://user:` + literalSecret + `@hooks.example.com/notify`, true},
+		"url query":                {`curl "https://hooks.example.com/notify?token=` + literalSecret + `&channel=ops"`, true},
+		"url query without secret": {`curl "https://hooks.example.com/notify?channel=ops"`, false},
+		"nested command": {map[string]any{"matcher": "Edit", "hooks": []any{
+			map[string]any{"type": "command", "command": "notify --password " + literalSecret},
+		}}, true},
+		"secret named field":          {map[string]any{"type": "http", "headers": map[string]any{"Authorization": literalSecret}}, true},
+		"secret named field variable": {map[string]any{"type": "http", "headers": map[string]any{"Authorization": "Bearer ${env:NOTIFY_TOKEN}"}}, false},
+	}
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			if got := HoldsLiteral(tc.native); got != tc.want {
+				t.Errorf("HoldsLiteral = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}

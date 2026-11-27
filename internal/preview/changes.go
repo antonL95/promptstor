@@ -7,7 +7,10 @@ import (
 	"github.com/antonL95/promptstor/internal/plan"
 )
 
-const secretNotShown = "(secret, not shown)\n"
+const (
+	secretNotShown = "(secret, not shown)\n"
+	secretSelector = "(secret)"
+)
 
 func Change(c plan.FileChange) string {
 	if !mayHoldSecrets(c) {
@@ -16,7 +19,7 @@ func Change(c plan.FileChange) string {
 	var out strings.Builder
 	out.WriteString("--- " + c.Path + "\n+++ " + c.Path + "\n")
 	for _, u := range c.Units {
-		out.WriteString("@@ set " + unitName(u.Kind, u.Key) + " @@\n")
+		out.WriteString("@@ set " + UnitName(u.Kind, u.Key, u.Secret) + " @@\n")
 		if u.Secret {
 			out.WriteString(secretNotShown)
 			continue
@@ -26,7 +29,7 @@ func Change(c plan.FileChange) string {
 		}
 	}
 	for _, e := range c.Removed {
-		out.WriteString("@@ remove " + unitName(e.Unit, e.Key) + " @@\n")
+		out.WriteString("@@ remove " + UnitName(e.Unit, e.Key, e.Secret) + " @@\n")
 	}
 	return out.String()
 }
@@ -49,9 +52,12 @@ func structured(kind manifest.UnitKind) bool {
 	return kind != manifest.UnitFile && kind != manifest.UnitSection
 }
 
-func unitName(kind manifest.UnitKind, key string) string {
+func UnitName(kind manifest.UnitKind, key string, secret bool) string {
 	if key == "" {
 		return string(kind)
+	}
+	if pointer, _, found := strings.Cut(key, "@"); found && secret && kind == manifest.UnitJSONElement {
+		return pointer + "@" + secretSelector
 	}
 	return key
 }

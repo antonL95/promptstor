@@ -285,6 +285,21 @@ func TestNeverPrintsSecretValues(t *testing.T) {
 	}
 }
 
+func TestLiteralSecretInProjectHookFails(t *testing.T) {
+	root := repo(t)
+	write(t, root, ".promptstor/hooks/notify.yaml", "promptstor:\n  id: ps_00000000000000000000000C51\nname: Notify\nnative:\n  claude-code:\n    event: Stop\n    hooks:\n      - type: command\n        command: \"curl -s -H 'Authorization: Bearer "+secretValue+"' https://hooks.example.com/notify\"\n")
+
+	code, out := check(t, root)
+
+	if code != 1 {
+		t.Fatalf("code %d, output:\n%s", code, out)
+	}
+	wantAll(t, out, "literal secret in Notify (hook); use an env placeholder\n")
+	if strings.Contains(out, secretValue) {
+		t.Errorf("output holds the secret value:\n%s", out)
+	}
+}
+
 func TestPassesOnWhatSyncWrites(t *testing.T) {
 	tools := []string{adapter.Antigravity, adapter.ClaudeCode, adapter.Codex, adapter.Cursor, adapter.GeminiCLI, adapter.OpenCode}
 	root := t.TempDir()

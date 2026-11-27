@@ -6,7 +6,9 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/antonL95/promptstor/internal/adapter"
 	"github.com/antonL95/promptstor/internal/library"
+	"github.com/antonL95/promptstor/internal/secrets"
 )
 
 const (
@@ -45,6 +47,10 @@ func (im *importer) hooks() error {
 			}
 			if used[name]++; used[name] > 1 {
 				name = fmt.Sprintf("%s %d", name, used[name])
+			}
+			if secrets.HoldsLiteral(native) {
+				im.note(path, adapter.NoteHookSecret, name)
+				continue
 			}
 			im.out.Items = append(im.out.Items, library.Item{
 				Kind:   library.KindHook,

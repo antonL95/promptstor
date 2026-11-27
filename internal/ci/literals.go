@@ -22,6 +22,9 @@ type serverField struct {
 func literalSecrets(items []library.Item) []literal {
 	var found []literal
 	for _, it := range items {
+		if it.Kind == library.KindHook && secrets.HoldsLiteral(it.Native) {
+			found = append(found, literal{id: it.ID, item: it.Name, key: hookKey})
+		}
 		if it.MCP == nil {
 			continue
 		}
@@ -33,6 +36,8 @@ func literalSecrets(items []library.Item) []literal {
 	}
 	return found
 }
+
+const hookKey = "hook"
 
 func serverFields(s library.MCPServer) []serverField {
 	fields := []serverField{

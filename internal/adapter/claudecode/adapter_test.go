@@ -390,6 +390,48 @@ func TestSecretsScrubbedOnImport(t *testing.T) {
 	}
 }
 
+func TestHookWithLiteralSecretNotImported(t *testing.T) {
+	const value = "fixture-hook-token"
+	for _, scope := range []adapter.Scope{adapter.ScopeUser, adapter.ScopeProject} {
+		t.Run(string(scope), func(t *testing.T) {
+			tg := target(t, "basic", scope, adapter.ClaudeCode)
+			path := filepath.Join(tg.Env.Home, ".claude", "settings.json")
+			if scope == adapter.ScopeProject {
+				path = filepath.Join(tg.ProjectRoot, ".claude", "settings.json")
+			}
+			settings := `{"hooks": {
+  "Stop": [{"hooks": [{"type": "command", "command": "curl -s -H \"Authorization: Bearer ` + value + `\" https://hooks.example.com/notify"}]}],
+  "Notification": [{"hooks": [{"type": "command", "command": "curl -s -H \"Authorization: Bearer $NOTIFY_TOKEN\" https://hooks.example.com/notify"}]}]
+}}`
+			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(path, []byte(settings), 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			imported := importFrom(t, tg)
+
+			var hooks []string
+			for _, it := range imported.Items {
+				if it.Kind == library.KindHook {
+					hooks = append(hooks, it.Name)
+				}
+			}
+			if !reflect.DeepEqual(hooks, []string{"Notification"}) {
+				t.Errorf("imported hooks %v, want only Notification", hooks)
+			}
+			want := adapter.Note{Path: path, Message: "hook Stop holds a literal secret; set it up by hand"}
+			if !slices.Contains(imported.Notes, want) {
+				t.Errorf("notes %+v", imported.Notes)
+			}
+			if report := importYAML(t, tg, imported); bytes.Contains(report, []byte(value)) {
+				t.Error("import carries the hook secret")
+			}
+		})
+	}
+}
+
 func TestExportUserScope(t *testing.T) {
 	tg := target(t, "basic", adapter.ScopeUser, adapter.ClaudeCode)
 	units, unsupported := export(t, tg, libraryItems())

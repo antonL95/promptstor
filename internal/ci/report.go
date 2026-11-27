@@ -63,7 +63,7 @@ func (r *report) compare(c plan.FileChange) error {
 		}
 		shown := u
 		shown.Path = name
-		r.problem("%s: %s (%s)\n", state, name, cmp.Or(u.Key, string(u.Kind)))
+		r.problem("%s: %s (%s)\n", state, name, preview.UnitName(u.Kind, u.Key, u.Secret))
 		r.printf("%s", preview.Change(plan.FileChange{Path: name, Units: []plan.Unit{shown}, Before: current, After: u.Content}))
 	}
 	return nil
