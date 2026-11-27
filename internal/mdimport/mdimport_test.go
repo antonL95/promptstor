@@ -188,6 +188,30 @@ func TestResolveGeminiConfinedToGitRoot(t *testing.T) {
 	}
 }
 
+func TestResolveNeverReadsCredentialFiles(t *testing.T) {
+	home := t.TempDir()
+	writeFiles(t, home, map[string]string{
+		".claude/CLAUDE.md":              "@~/.codex/auth.json\n@linked.md\n@~/.local/share/opencode/notes.md\n",
+		".codex/auth.json":               "fixture-secret-value\n",
+		".local/share/opencode/notes.md": "fixture-secret-value\n",
+	})
+	if err := os.Symlink("../.codex/auth.json", filepath.Join(home, ".claude", "linked.md")); err != nil {
+		t.Fatal(err)
+	}
+	resolved := resolve(t, env(home), filepath.Join(home, ".claude", "CLAUDE.md"), mdimport.Claude)
+	if got := files(home, resolved); !reflect.DeepEqual(got, []string{".claude/CLAUDE.md@0"}) {
+		t.Errorf("files %v", got)
+	}
+	want := []adapter.Unresolved{
+		{File: ".claude/CLAUDE.md", Line: "1", Target: "~/.codex/auth.json", Reason: "credential file"},
+		{File: ".claude/CLAUDE.md", Line: "2", Target: "linked.md", Reason: "credential file"},
+		{File: ".claude/CLAUDE.md", Line: "3", Target: "~/.local/share/opencode/notes.md", Reason: "credential file"},
+	}
+	if got := relativeUnresolved(home, resolved); !reflect.DeepEqual(got, want) {
+		t.Errorf("unresolved %+v", got)
+	}
+}
+
 func TestResolveRootMissingIsAnError(t *testing.T) {
 	root := t.TempDir()
 	if _, err := mdimport.Resolve(env(root), filepath.Join(root, "CLAUDE.md"), mdimport.Claude); err == nil {

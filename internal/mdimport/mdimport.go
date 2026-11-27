@@ -10,16 +10,18 @@ import (
 	"strings"
 
 	"github.com/antonL95/promptstor/internal/adapter"
+	"github.com/antonL95/promptstor/internal/backup"
 	"github.com/antonL95/promptstor/internal/paths"
 )
 
 const (
-	ReasonCycle   = "cycle"
-	ReasonTilde   = "tilde"
-	ReasonOutside = "outside git root"
-	ReasonDepth   = "depth"
-	ReasonMissing = "missing"
-	ReasonSyntax  = "syntax"
+	ReasonCycle      = "cycle"
+	ReasonTilde      = "tilde"
+	ReasonOutside    = "outside git root"
+	ReasonDepth      = "depth"
+	ReasonMissing    = "missing"
+	ReasonSyntax     = "syntax"
+	ReasonCredential = "credential file"
 )
 
 type Syntax struct {
@@ -92,6 +94,9 @@ func (r *resolver) visit(path string, depth int) error {
 		if reason == "" {
 			reason = missing(target)
 		}
+		if reason == "" && r.credential(target) {
+			reason = ReasonCredential
+		}
 		if reason != "" {
 			r.out.Unresolved = append(r.out.Unresolved, adapter.Unresolved{
 				File: path, Line: strconv.Itoa(found.Line), Target: found.Token, Reason: reason,
@@ -138,6 +143,14 @@ func (r *resolver) target(from string, found Import) (string, string) {
 		return "", ReasonCycle
 	}
 	return target, ""
+}
+
+func (r *resolver) credential(path string) bool {
+	if backup.Excluded(r.env, path) {
+		return true
+	}
+	resolved, err := filepath.EvalSymlinks(path)
+	return err != nil || backup.Excluded(r.env, resolved)
 }
 
 func missing(path string) string {
