@@ -1,0 +1,6 @@
+<home>/.agents/skills root=<home> keys=[] redact=[]
+<home>/.cursor/agents root=<home> keys=[] redact=[]
+<home>/.cursor/cli-config.json root=<home> keys=[] redact=[]
+<home>/.cursor/commands root=<home> keys=[] redact=[]
+<home>/.cursor/hooks.json root=<home> keys=[] redact=[]
+<home>/.cursor/mcp.json root=<home> keys=[] redact=[]

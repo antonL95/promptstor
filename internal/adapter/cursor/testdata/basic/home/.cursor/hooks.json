@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      { "command": "./hooks/audit.sh", "timeout": 30, "matcher": "curl|wget" }
+    ],
+    "stop": [
+      { "type": "prompt", "prompt": "Did the tests run?" }
+    ]
+  }
+}

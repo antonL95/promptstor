@@ -1,0 +1,4 @@
+---
+globs: web/**/*.vue
+---
+Keep components small.

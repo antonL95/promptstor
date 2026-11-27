@@ -1,0 +1,12 @@
+---
+description: TypeScript style
+globs: **/*.ts, src/*.tsx
+alwaysApply: false
+---
+## Naming
+
+Use camelCase.
+
+## Imports
+
+Sort imports.
