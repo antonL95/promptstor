@@ -6,13 +6,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/antonL95/promptstor/internal/doctor"
-	"github.com/antonL95/promptstor/internal/drift"
-	"github.com/antonL95/promptstor/internal/paths"
+	"github.com/antonL95/promptstor/internal/notify"
 )
-
-type noNotifier struct{}
-
-func (noNotifier) Notify(paths.Env, drift.Report) error { return nil }
 
 func newDoctorCommand(d Deps) *cobra.Command {
 	var opt doctor.Options
@@ -28,7 +23,7 @@ func newDoctorCommand(d Deps) *cobra.Command {
 			if opt.Project, err = absolute(opt.Project); err != nil {
 				return err
 			}
-			opt.Notifier = noNotifier{}
+			opt.Notifier = notify.Desktop{Run: d.run}
 			opt.Reconfigure = d.engineFor
 			p := doctor.LinePrompter(cmd.InOrStdin(), cmd.OutOrStdout(), d.TTY, opt.Yes)
 			code, err := doctor.Run(e, p, cmd.OutOrStdout(), opt)

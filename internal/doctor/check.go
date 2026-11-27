@@ -25,19 +25,22 @@ func (d *doctor) check() (int, error) {
 		return 2, err
 	}
 	if !d.opt.DryRun {
-		if err := drift.WriteLastCheck(d.e.Env, r, d.now()); err != nil {
+		if err := d.record(r); err != nil {
 			return 2, err
-		}
-		if d.opt.Notify && d.opt.Notifier != nil {
-			if err := d.opt.Notifier.Notify(d.e.Env, r); err != nil {
-				return 2, err
-			}
 		}
 	}
 	if r.Clean() {
 		return 0, nil
 	}
 	return 1, nil
+}
+
+func (d *doctor) record(r drift.Report) error {
+	var notifyErr error
+	if d.opt.Notify && d.opt.Notifier != nil {
+		notifyErr = d.opt.Notifier.Notify(d.e.Env, r)
+	}
+	return errors.Join(notifyErr, drift.WriteLastCheck(d.e.Env, r, d.now()))
 }
 
 func (d *doctor) render(r drift.Report) error {

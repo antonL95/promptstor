@@ -73,6 +73,14 @@ func (e Env) BackupDir() string { return e.statePath("backups") }
 
 func (e Env) WorktreeDir() string { return e.statePath("worktrees") }
 
+func (e Env) CheckLogPath() string { return e.statePath("check.log") }
+
+func (e Env) LaunchAgentPath(label string) string {
+	return filepath.Join(e.Home, "Library", "LaunchAgents", label+".plist")
+}
+
+func (e Env) SystemdUserDir() string { return filepath.Join(e.Home, ".config", "systemd", "user") }
+
 func (e Env) configPath(name string) string { return filepath.Join(e.ConfigHome, appDir, name) }
 
 func (e Env) statePath(name string) string { return filepath.Join(e.StateDir(), name) }

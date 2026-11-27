@@ -72,6 +72,16 @@ func (r Report) Clean() bool {
 	return !slices.ContainsFunc(r.Findings, func(f Finding) bool { return f.Kind.blocksClean() })
 }
 
+func (r Report) DriftCount() int {
+	count := 0
+	for _, f := range sorted(r.Findings) {
+		if f.Kind.blocksClean() {
+			count++
+		}
+	}
+	return count
+}
+
 func (r Report) Fingerprint() string {
 	data, err := json.Marshal(sorted(r.Findings))
 	if err != nil {
