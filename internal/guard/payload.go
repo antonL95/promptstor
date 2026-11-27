@@ -8,11 +8,10 @@ import (
 )
 
 const (
-	ClaudeCode  = "claude-code"
-	Codex       = "codex"
-	GeminiCLI   = "gemini-cli"
-	Cursor      = "cursor"
-	Antigravity = "antigravity"
+	ClaudeCode = "claude-code"
+	Codex      = "codex"
+	GeminiCLI  = "gemini-cli"
+	Cursor     = "cursor"
 
 	patchBegin  = "*** Begin Patch"
 	patchAdd    = "*** Add File: "
@@ -60,8 +59,6 @@ func Parse(tool string, payload []byte) ([]Edit, error) {
 		return parseGemini(payload)
 	case Cursor:
 		return parseCursor(payload)
-	case Antigravity:
-		return parseAntigravity(payload)
 	default:
 		return nil, fmt.Errorf("unknown tool %q", tool)
 	}
@@ -141,27 +138,6 @@ func parseCursor(payload []byte) ([]Edit, error) {
 		base = call.WorkspaceRoots[0]
 	}
 	return single(base, input.FilePath, Edit{}), nil
-}
-
-func parseAntigravity(payload []byte) ([]Edit, error) {
-	var call struct {
-		Cwd      string `json:"cwd"`
-		ToolCall struct {
-			Args json.RawMessage `json:"args"`
-		} `json:"toolCall"`
-	}
-	if err := json.Unmarshal(payload, &call); err != nil {
-		return nil, fmt.Errorf("parse payload: %w", err)
-	}
-	var input fileInput
-	if len(call.ToolCall.Args) > 0 && json.Unmarshal(call.ToolCall.Args, &input) != nil {
-		return nil, nil
-	}
-	path := input.FilePath
-	if path == "" {
-		path = input.Path
-	}
-	return single(call.Cwd, path, Edit{}), nil
 }
 
 func parseCodex(payload []byte) ([]Edit, error) {

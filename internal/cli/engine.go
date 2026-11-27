@@ -36,6 +36,7 @@ func (d Deps) engine() (engine.Engine, error) {
 		Acks:     acks,
 		Now:      d.Now,
 		Builtins: append(slices.Clone(d.Builtins), guards...),
+		Notices:  editGuardNotices(cfg),
 	}, nil
 }
 

@@ -6,13 +6,16 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/antonL95/promptstor/internal/adapter"
 	"github.com/antonL95/promptstor/internal/config"
 	"github.com/antonL95/promptstor/internal/library"
 	"github.com/antonL95/promptstor/internal/manifest"
+	"github.com/antonL95/promptstor/internal/plan"
 )
 
 const guardBinary = "/opt/promptstor/bin/promptstor"
@@ -83,5 +86,37 @@ func TestSyncInstallsEditGuardsWhenEnabled(t *testing.T) {
 	}
 	if e, err = d.engine(); err != nil || len(e.Builtins) != 0 {
 		t.Errorf("builtins %d with guards off, err %v", len(e.Builtins), err)
+	}
+}
+
+func TestNoAntigravityGuardInstalled(t *testing.T) {
+	env := cliHome(t)
+	cfg := config.Config{Version: 1, Tools: []string{"antigravity"}, EditGuards: true}
+	if err := cfg.Save(env.ConfigFile()); err != nil {
+		t.Fatal(err)
+	}
+	d := deps(env)
+	d.Binary = guardBinary
+	e, err := d.engine()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, it := range e.Builtins {
+		if library.IsEditGuard(it) {
+			t.Errorf("builtin %s installed for antigravity", it.ID)
+		}
+	}
+	p, err := e.Plan("", plan.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range p.Changes {
+		if bytes.Contains(c.After, []byte("promptstor hook")) {
+			t.Errorf("%s gets an edit guard", c.Path)
+		}
+	}
+	want := adapter.Unsupported{Tool: "antigravity", Name: "edit guard antigravity", Reason: "Antigravity hooks must decide every call and have no neutral answer; no edit guard in this release"}
+	if !slices.Contains(p.Unsupported, want) {
+		t.Errorf("unsupported %+v, want %+v", p.Unsupported, want)
 	}
 }

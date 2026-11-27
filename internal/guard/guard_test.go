@@ -311,7 +311,6 @@ func TestHookBlocksWithEachToolsResponse(t *testing.T) {
 		{"claude-code", payload(t, env, "claude-code", "write-skill.json"), 2, "", "stderr"},
 		{"gemini-cli", mustJSON(t, map[string]any{"cwd": env.Home, "tool_name": "write_file", "tool_input": map[string]any{"file_path": path, "content": "x"}}), 2, "", "stderr"},
 		{"cursor", mustJSON(t, map[string]any{"hook_event_name": "preToolUse", "tool_name": "Write", "tool_input": map[string]any{"file_path": path}}), 2, "", "stderr"},
-		{"antigravity", mustJSON(t, map[string]any{"hookEventName": "PreToolUse", "cwd": env.Home, "toolCall": map[string]any{"id": "1", "name": "write_file", "args": map[string]any{"file_path": path}}}), 0, `{"decision":"deny","reason":` + quote(t, blockMessage(path, skillID)) + "}\n", "stdout"},
 	}
 	for _, c := range cases {
 		code, stdout, stderr := runHook(t, env, c.tool, c.data)
@@ -334,7 +333,6 @@ func TestHookAllowsWithEachToolsResponse(t *testing.T) {
 	}{
 		{"claude-code", "", payload(t, env, "claude-code", "write-unknown.json")},
 		{"cursor", "{}\n", mustJSON(t, map[string]any{"hook_event_name": "preToolUse", "tool_name": "Write", "tool_input": map[string]any{"file_path": path}})},
-		{"antigravity", "{\"decision\":\"allow\"}\n", mustJSON(t, map[string]any{"cwd": env.Home, "toolCall": map[string]any{"name": "write_file", "args": map[string]any{"file_path": path}}})},
 	}
 	for _, c := range cases {
 		code, stdout, stderr := runHook(t, env, c.tool, c.data)
@@ -351,11 +349,6 @@ func mustJSON(t *testing.T, value any) []byte {
 		t.Fatal(err)
 	}
 	return data
-}
-
-func quote(t *testing.T, s string) string {
-	t.Helper()
-	return string(mustJSON(t, s))
 }
 
 var elementHash = regexp.MustCompile(`@#[0-9a-f]{64}`)
@@ -385,7 +378,7 @@ func exportReport(t *testing.T, env paths.Env, tool string, items []library.Item
 }
 
 func TestEditGuardExportedPerTool(t *testing.T) {
-	for _, tool := range []string{"claude-code", "codex", "gemini-cli", "antigravity", "cursor"} {
+	for _, tool := range []string{"claude-code", "codex", "gemini-cli", "cursor"} {
 		t.Run(tool, func(t *testing.T) {
 			env := testenv.Home(t, t.TempDir())
 			it := library.EditGuard(tool, binary)

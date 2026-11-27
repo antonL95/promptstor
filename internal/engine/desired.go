@@ -47,7 +47,7 @@ func (e Engine) desired(projectRoot string, merged library.Merged, m manifest.Ma
 	if err != nil {
 		return desired{}, err
 	}
-	d := desired{selected: map[string]bool{}, roots: map[string]bool{e.Env.Home: true}}
+	d := desired{selected: map[string]bool{}, roots: map[string]bool{e.Env.Home: true}, unsupported: slices.Clone(e.Notices)}
 	if projectRoot != "" {
 		d.roots[projectRoot] = true
 	}

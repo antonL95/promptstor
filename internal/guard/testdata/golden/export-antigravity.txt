@@ -1,3 +1,0 @@
-~/.gemini/config/hooks.json json /promptstor-edit-guard-antigravity
-{"PreToolUse":[{"hooks":[{"command":"/opt/promptstor/bin/promptstor hook antigravity","type":"command"}],"matcher":"write_file|edit_file"}]}
-note (ps_builtin_guard_antigravity, blocking false): the edit guard matches write_file and edit_file and reads file_path or path from the tool arguments; Antigravity does not document its edit tool names or arguments, so its coverage is unverified

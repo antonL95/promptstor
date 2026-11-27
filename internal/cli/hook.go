@@ -33,6 +33,15 @@ func newHookCommand(d Deps) *cobra.Command {
 	}
 }
 
+const reasonNoAntigravityGuard = "Antigravity hooks must decide every call and have no neutral answer; no edit guard in this release"
+
+func editGuardNotices(cfg config.Config) []adapter.Unsupported {
+	if !cfg.EditGuards || !slices.Contains(cfg.Tools, adapter.Antigravity) {
+		return nil
+	}
+	return []adapter.Unsupported{{Tool: adapter.Antigravity, Name: "edit guard " + adapter.Antigravity, Reason: reasonNoAntigravityGuard}}
+}
+
 func (d Deps) editGuards(cfg config.Config) ([]library.Item, error) {
 	if !cfg.EditGuards || d.Binary == "" {
 		return nil, nil

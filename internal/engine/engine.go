@@ -35,6 +35,7 @@ type Engine struct {
 	Acks     policy.Acks
 	Now      func() time.Time
 	Builtins []library.Item
+	Notices  []adapter.Unsupported
 }
 
 type Plan struct {

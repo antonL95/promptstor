@@ -31,7 +31,6 @@ var (
 		"codex":       "apply_patch",
 		"gemini-cli":  "write_file|replace",
 		"cursor":      "Write",
-		"antigravity": "write_file|edit_file",
 	}
 	guardEvents = map[string]string{
 		"claude-code": preToolUse,
@@ -62,8 +61,6 @@ func EditGuard(tool, binary string) Item {
 	switch tool {
 	case "cursor":
 		native = map[string]any{eventKey: guardEvents[tool], hookMatcherKey: matcher, hookTypeKey: hookCommand, hookCommand: command}
-	case "antigravity":
-		native = map[string]any{preToolUse: []any{map[string]any{hookMatcherKey: matcher, hookHandlersKey: []any{handler}}}}
 	default:
 		native = map[string]any{eventKey: guardEvents[tool], hookMatcherKey: matcher, hookHandlersKey: []any{handler}}
 	}
