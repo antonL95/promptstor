@@ -225,7 +225,9 @@ func TestDiffAdoptsMatchingUnitsWithoutEntries(t *testing.T) {
 	saved := loadManifest(t, env)
 	for _, u := range desired {
 		got, ok := saved.Get(u.Path, u.Kind, u.Key)
-		if want := entryFor(t, u); !ok || !reflect.DeepEqual(got, want) {
+		want := entryFor(t, u)
+		want.Adopted = true
+		if !ok || !reflect.DeepEqual(got, want) {
 			t.Errorf("entry %s %s: got %+v want %+v", u.Path, u.Key, got, want)
 		}
 	}
@@ -753,5 +755,139 @@ func TestSharedEntryKeptForToolsOutsideSync(t *testing.T) {
 	want.Tool = adapter.GeminiCLI
 	if !reflect.DeepEqual(saved.Entries, []manifest.Entry{want}) {
 		t.Errorf("manifest %+v", saved.Entries)
+	}
+}
+
+func applied(t *testing.T, env paths.Env, m *manifest.Manifest, desired []plan.Unit) *recorder {
+	t.Helper()
+	changes := diff(t, desired, *m, []string{adapter.Cursor}, plan.Options{})
+	for _, c := range changes {
+		if c.Blocked != "" {
+			t.Fatalf("%s blocked %q", c.Path, c.Blocked)
+		}
+	}
+	snap := &recorder{t: t, root: env.Home}
+	if _, err := apply(env, changes, snap, m); err != nil {
+		t.Fatal(err)
+	}
+	return snap
+}
+
+func adoptedFlags(m manifest.Manifest) map[string]bool {
+	flags := map[string]bool{}
+	for _, e := range m.Entries {
+		flags[filepath.Base(e.Path)+" "+e.Key] = e.Adopted
+	}
+	return flags
+}
+
+func TestAdoptedUnitReleasedNotDeleted(t *testing.T) {
+	const document = `{"version": 1, "mine": true}`
+	settings := func(env paths.Env) plan.Unit {
+		return unit(env, adapter.Cursor, "tool/hooks.json", manifest.UnitJSON, "/version", "1")
+	}
+	file := func(env paths.Env) plan.Unit {
+		return unit(env, adapter.Cursor, "tool/note.md", manifest.UnitFile, "", "mine\n")
+	}
+	for name, extra := range map[string]bool{"unchanged file": false, "file that also gets a write": true} {
+		t.Run(name, func(t *testing.T) {
+			env := home(t)
+			write(t, at(env, "tool/hooks.json"), document)
+			write(t, at(env, "tool/note.md"), "mine\n")
+			desired := []plan.Unit{settings(env), file(env)}
+			if extra {
+				desired = append(desired, unit(env, adapter.Cursor, "tool/hooks.json", manifest.UnitJSON, "/ours", "2"))
+			}
+			var m manifest.Manifest
+			applied(t, env, &m, desired)
+			want := map[string]bool{"hooks.json /version": true, "note.md ": true}
+			if extra {
+				want["hooks.json /ours"] = false
+			}
+			if got := adoptedFlags(loadManifest(t, env)); !reflect.DeepEqual(got, want) {
+				t.Fatalf("adopted %v", got)
+			}
+
+			for i := range desired {
+				desired[i].Items = []library.ID{"item-renamed"}
+			}
+			applied(t, env, &m, desired)
+			if got := adoptedFlags(loadManifest(t, env)); !reflect.DeepEqual(got, want) {
+				t.Fatalf("adopted after a second apply %v", got)
+			}
+
+			changes := diff(t, nil, m, []string{adapter.Cursor}, plan.Options{})
+			note := only(t, changes, at(env, "tool/note.md"))
+			if note.Op != plan.OpNoop || note.Blocked != "" || len(note.Removed) != 1 {
+				t.Errorf("note op %s blocked %q removed %d", note.Op, note.Blocked, len(note.Removed))
+			}
+			hooks := only(t, changes, at(env, "tool/hooks.json"))
+			wantOp := plan.OpNoop
+			if extra {
+				wantOp = plan.OpUpdate
+			}
+			if hooks.Op != wantOp || hooks.Blocked != "" {
+				t.Errorf("hooks op %s blocked %q", hooks.Op, hooks.Blocked)
+			}
+			applied(t, env, &m, nil)
+			if got := read(t, at(env, "tool/note.md")); got != "mine\n" {
+				t.Errorf("note %q", got)
+			}
+			after := []byte(read(t, at(env, "tool/hooks.json")))
+			if _, found, _ := structedit.JSONGet(after, "/version"); !found {
+				t.Errorf("version removed: %s", after)
+			}
+			if _, found, _ := structedit.JSONGet(after, "/ours"); found {
+				t.Errorf("written key kept: %s", after)
+			}
+			if saved := loadManifest(t, env); len(saved.Entries) != 0 {
+				t.Errorf("manifest %+v", saved.Entries)
+			}
+		})
+	}
+}
+
+func TestAdoptedUnitReleasedThroughSymlink(t *testing.T) {
+	env := home(t)
+	write(t, at(env, "tool/note.md"), "mine\n")
+	var m manifest.Manifest
+	applied(t, env, &m, []plan.Unit{unit(env, adapter.Cursor, "tool/note.md", manifest.UnitFile, "", "mine\n")})
+	write(t, at(env, "elsewhere.md"), "moved\n")
+	link(t, at(env, "elsewhere.md"), at(env, "tool/note.md"))
+	before := testenv.TreeHash(t, env.Home)
+	snap := applied(t, env, &m, nil)
+	assertUntouched(t, env, before, snap)
+	if saved := loadManifest(t, env); len(saved.Entries) != 0 {
+		t.Errorf("manifest %+v", saved.Entries)
+	}
+}
+
+func TestWrittenUnitStillDeleted(t *testing.T) {
+	env := home(t)
+	write(t, at(env, "tool/hooks.json"), `{"changed": 1}`)
+	var m manifest.Manifest
+	applied(t, env, &m, []plan.Unit{
+		unit(env, adapter.Cursor, "tool/hooks.json", manifest.UnitJSON, "/changed", "1"),
+		unit(env, adapter.Cursor, "tool/hooks.json", manifest.UnitJSON, "/created", "true"),
+		unit(env, adapter.Cursor, "tool/note.md", manifest.UnitFile, "", "ours\n"),
+	})
+	applied(t, env, &m, []plan.Unit{
+		unit(env, adapter.Cursor, "tool/hooks.json", manifest.UnitJSON, "/changed", "2"),
+		unit(env, adapter.Cursor, "tool/hooks.json", manifest.UnitJSON, "/created", "true"),
+		unit(env, adapter.Cursor, "tool/note.md", manifest.UnitFile, "", "ours\n"),
+	})
+	want := map[string]bool{"hooks.json /changed": false, "hooks.json /created": false, "note.md ": false}
+	if got := adoptedFlags(loadManifest(t, env)); !reflect.DeepEqual(got, want) {
+		t.Fatalf("adopted %v", got)
+	}
+	applied(t, env, &m, nil)
+	after := []byte(read(t, at(env, "tool/hooks.json")))
+	for _, key := range []string{"/changed", "/created"} {
+		if _, found, _ := structedit.JSONGet(after, key); found {
+			t.Errorf("%s still present: %s", key, after)
+		}
+	}
+	if entry, _ := fsx.Inspect(at(env, "tool/note.md")); entry.Exists {
+		t.Error("written file kept")
 	}
 }

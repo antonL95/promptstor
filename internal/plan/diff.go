@@ -178,6 +178,9 @@ func planFile(draft *fileDraft, m *manifest.Manifest, opt Options) FileChange {
 		Op:          OpNoop,
 		SharedState: slices.Contains(opt.SharedState, draft.path),
 	}
+	if releasesOnly(draft) {
+		return c
+	}
 	if draft.blocked != "" {
 		return blocked(c, draft.blocked)
 	}
@@ -199,11 +202,17 @@ func planFile(draft *fileDraft, m *manifest.Manifest, opt Options) FileChange {
 	return c
 }
 
+func releasesOnly(draft *fileDraft) bool {
+	return len(draft.units) == 0 && len(draft.removed) > 0 &&
+		!slices.ContainsFunc(draft.removed, func(e manifest.Entry) bool { return !e.Adopted })
+}
+
 func blocked(c FileChange, reason string) FileChange {
 	c.Blocked = reason
 	c.Op = OpNoop
 	c.After = nil
 	c.Record = nil
+	c.Adopted = nil
 	return c
 }
 

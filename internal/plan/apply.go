@@ -237,6 +237,10 @@ func pruneEmptyParents(root, path string) error {
 	return nil
 }
 
+func (c FileChange) adopts(u Unit) bool {
+	return slices.ContainsFunc(c.Adopted, func(a Unit) bool { return a.Kind == u.Kind && a.Key == u.Key })
+}
+
 func record(m *manifest.Manifest, c FileChange, now time.Time) error {
 	for _, e := range c.Removed {
 		m.Remove(e.Path, e.Unit, e.Key)
@@ -262,6 +266,7 @@ func record(m *manifest.Manifest, c FileChange, now time.Time) error {
 			Hash:    hash,
 			Items:   u.Items,
 			Secret:  u.Secret,
+			Adopted: c.adopts(u),
 			Written: now.UTC(),
 		})
 	}

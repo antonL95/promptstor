@@ -20,6 +20,7 @@ type editor struct {
 	exists   bool
 	deleted  bool
 	record   []Unit
+	adopted  []Unit
 }
 
 func (e *editor) run() string {
@@ -38,7 +39,7 @@ func (e *editor) run() string {
 }
 
 func (e *editor) remove(entry manifest.Entry) string {
-	if !e.exists || e.deleted {
+	if entry.Adopted || !e.exists || e.deleted {
 		return ""
 	}
 	if entry.Unit == manifest.UnitFile {
@@ -70,6 +71,9 @@ func (e *editor) apply(u Unit) string {
 			if !owned || !sameEntry(entry, u, want) {
 				e.record = append(e.record, u)
 			}
+			if !owned || entry.Adopted {
+				e.adopted = append(e.adopted, u)
+			}
 			return ""
 		}
 	}
@@ -88,6 +92,7 @@ func (e *editor) apply(u Unit) string {
 func (e *editor) finish() {
 	c := e.change
 	c.After = e.doc
+	c.Adopted = e.adopted
 	switch {
 	case e.deleted && len(c.Units) == 0:
 		c.After = nil

@@ -30,6 +30,7 @@ type FileChange struct {
 	Path, Root    string
 	Units         []Unit
 	Removed       []manifest.Entry
+	Adopted       []Unit
 	Exists        bool
 	Before, After []byte
 	Op            Op

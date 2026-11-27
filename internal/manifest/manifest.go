@@ -37,6 +37,7 @@ type Entry struct {
 	Hash    string       `json:"hash"`
 	Items   []library.ID `json:"items,omitempty"`
 	Secret  bool         `json:"secret,omitempty"`
+	Adopted bool         `json:"adopted,omitempty"`
 	Written time.Time    `json:"written"`
 }
 

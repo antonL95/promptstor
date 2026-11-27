@@ -928,3 +928,40 @@ func TestNothingDroppedSilentlyOnImport(t *testing.T) {
 	}
 	find(t, imported.Items, library.KindSkill, "web")
 }
+
+type noSnapshot struct{}
+
+func (noSnapshot) Snapshot(string, []plan.SnapshotEntry) (string, error) { return "snap", nil }
+
+func TestRemovingLastHookKeepsUserVersion(t *testing.T) {
+	tg := emptyTarget(t, adapter.ScopeUser)
+	path := filepath.Join(tg.Env.Home, ".cursor", "hooks.json")
+	write(t, path, `{"version":1,"hooks":{"stop":[{"command":"mine"}]}}`)
+	var m manifest.Manifest
+	apply := func(items ...library.Item) {
+		units, _ := export(t, tg, items...)
+		changes, err := plan.Diff(units, m, []string{adapter.Cursor}, plan.Options{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := plan.Apply(changes, noSnapshot{}, &m, tg.Env.ManifestPath(), tg.Env.LockPath()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	apply(hook("ps_hook", "Ours", map[string]any{"event": "stop", "command": "ours"}))
+	apply()
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Version int
+		Hooks   map[string][]map[string]any
+	}
+	if err := json.Unmarshal(after, &doc); err != nil {
+		t.Fatal(err)
+	}
+	if doc.Version != 1 || len(doc.Hooks["stop"]) != 1 || doc.Hooks["stop"][0]["command"] != "mine" || len(m.Entries) != 0 {
+		t.Errorf("document %s manifest %+v", after, m.Entries)
+	}
+}
