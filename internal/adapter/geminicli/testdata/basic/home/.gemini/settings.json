@@ -1,0 +1,35 @@
+{
+  // written by hand
+  "security": { "auth": { "selectedType": "oauth-personal" } },
+  "tools": {
+    "allowed": ["run_shell_command(make test)"],
+    "exclude": ["write_file"]
+  },
+  /* servers the user trusts */
+  "mcp": {
+    "allowed": ["docs"]
+  },
+  "mcpServers": {
+    "docs": {
+      "command": "example-docs",
+      "args": ["--token", "fixture-token-value"],
+      "env": { "DOCS_TOKEN": "$DOCS_TOKEN", "API_KEY": "fixture-secret-value" },
+      "trust": true,
+      "timeout": 5000
+    },
+    "legacy": {
+      "httpUrl": "https://mcp.example.com/mcp",
+      "headers": { "Authorization": "Bearer fixture-bearer-value" }
+    },
+    "events": { "url": "https://mcp.example.com/events", "type": "sse" },
+    "plain": { "url": "https://mcp.example.com/plain" }
+  },
+  "hooks": {
+    "BeforeTool": [
+      {
+        "matcher": "write_file|replace",
+        "hooks": [{ "type": "command", "command": "/opt/example/hooks/guard.sh", "timeout": 30000 }]
+      }
+    ]
+  },
+}

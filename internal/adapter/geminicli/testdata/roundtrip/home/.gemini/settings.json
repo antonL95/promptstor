@@ -1,0 +1,24 @@
+{
+  // kept by hand
+  "mcp": { "allowed": ["docs"] },
+  "mcpServers": {
+    "docs": {
+      "command": "example-docs",
+      "args": ["--verbose"],
+      "env": { "DOCS_TOKEN": "${DOCS_TOKEN}", "MODE": "readonly" }
+    },
+    "remote": {
+      "url": "https://mcp.example.com/mcp",
+      "type": "http",
+      "headers": { "Authorization": "Bearer ${REMOTE_TOKEN}" }
+    }
+  },
+  "hooks": {
+    "BeforeTool": [
+      {
+        "matcher": "write_file|replace",
+        "hooks": [{ "type": "command", "command": "/opt/example/hooks/guard.sh", "timeout": 30000 }]
+      }
+    ]
+  }
+}

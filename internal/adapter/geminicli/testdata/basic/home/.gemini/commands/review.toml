@@ -1,0 +1,6 @@
+description = "Review the staged diff"
+prompt = """
+Review this diff:
+!{git diff --staged}
+Focus: {{args}}
+"""
