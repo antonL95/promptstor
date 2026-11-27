@@ -1,0 +1,173 @@
+items:
+- kind: rule
+  name: AGENTS
+  order: 10
+  source: <home>/.codex/AGENTS.md
+  body: |
+    Shared notes for every session.
+- kind: rule
+  name: Reviews
+  order: 20
+  source: <home>/.codex/AGENTS.md
+  body: |
+    ## Reviews
+
+    Be critical.
+- kind: rule
+  name: Testing
+  order: 30
+  source: <home>/.codex/AGENTS.md
+  body: |
+    ## Testing
+
+    Write the failing test first, then run the whole suite.
+- kind: subagent
+  name: security_reviewer
+  source: <home>/.codex/agents/reviewer.toml
+  description: Reviews for security risks.
+  meta:
+    codex_model: example-model
+    model_reasoning_effort: high
+  body: |
+    Do not edit files.
+- kind: skill
+  name: release-notes
+  source: <home>/.agents/skills/release-notes
+  description: Draft release notes.
+  files:
+  - agents/openai.yaml 0644
+  body: |
+    Summarise the changes.
+- kind: hook
+  name: SessionStart startup
+  source: <home>/.codex/hooks.json
+  native:
+    codex:
+      event: SessionStart
+      hooks:
+      - command: /opt/example/hooks/greet.sh
+        statusMessage: Greeting
+        timeout: 30
+        type: command
+      matcher: startup
+- kind: mcp
+  name: docs
+  source: <home>/.codex/config.toml
+  mcp:
+    transport: stdio
+    command: example-docs
+    url: ""
+    args:
+    - --verbose
+    env:
+      DOCS_TOKEN:
+        literal: ""
+        ref: needs-setup:DOCS_TOKEN
+      MODE:
+        literal: readonly
+        ref: ""
+    headers: {}
+    resolve: false
+- kind: mcp
+  name: keyed
+  source: <home>/.codex/config.toml
+  mcp:
+    transport: http
+    command: ""
+    url: https://keyed.example.com/mcp
+    args: []
+    env: {}
+    headers:
+      Authorization:
+        literal: ""
+        ref: needs-setup:Authorization
+    resolve: false
+- kind: mcp
+  name: remote
+  source: <home>/.codex/config.toml
+  mcp:
+    transport: http
+    command: ""
+    url: https://mcp.example.com/mcp
+    args: []
+    env: {}
+    headers:
+      Authorization:
+        literal: Bearer ${env:REMOTE_TOKEN}
+        ref: ""
+      X-Static:
+        literal: v1
+        ref: ""
+      X-Team:
+        literal: ""
+        ref: env:TEAM_NAME
+    resolve: false
+- kind: mcp
+  name: tracker
+  source: <home>/.codex/config.toml
+  mcp:
+    transport: stdio
+    command: example-tracker
+    url: ""
+    args: []
+    env:
+      TRACKER_TOKEN:
+        literal: ""
+        ref: env:TRACKER_TOKEN
+    headers: {}
+    resolve: false
+- kind: skill
+  name: old-skill
+  source: <home>/.codex/skills/old-skill
+  description: A hand written skill in the deprecated folder.
+  body: |
+    Do the old thing.
+- kind: command
+  name: ship
+  source: <home>/.codex/skills/ship/SKILL.md
+  description: Ship the branch
+  body: |
+    Ship it.
+- kind: command
+  name: triage
+  source: <home>/.codex/prompts/triage.md
+  description: Triage an issue
+  meta:
+    argument-hint: '[issue]'
+  body: |
+    Triage issue $1.
+foreign:
+- path: <home>/.codex/plugins
+  owner: codex plugins
+  reason: installed plugins; Codex manages them
+- path: <home>/.codex/skills/.system
+  owner: codex
+  reason: bundled skills; Codex rewrites them
+grants:
+- tool: codex
+  path: <home>/.codex/rules/default.rules
+  key: prefix_rule(pattern=["make", "test"], decision="allow")
+  value: prefix_rule(pattern=["make", "test"], decision="allow")
+- tool: codex
+  path: <home>/.codex/rules/default.rules
+  key: network_rule(host="docs.example.com", protocol="https", decision="allow")
+  value: network_rule(host="docs.example.com", protocol="https", decision="allow")
+notes:
+- path: <home>/.codex/agents/reviewer.toml
+  message: field sandbox_mode not imported
+- path: <home>/.codex/config.toml
+  message: 'server docs: secret scrubbed, env/DOCS_TOKEN'
+- path: <home>/.codex/config.toml
+  message: 'server keyed: secret scrubbed, headers/Authorization'
+- path: <home>/.codex/config.toml
+  message: server parked is disabled; not imported
+- path: <home>/.codex/config.toml
+  message: 'server tracker: field cwd not imported'
+- path: <home>/.codex/config.toml
+  message: 'server tracker: field startup_timeout_sec not imported'
+- path: <home>/.codex/prompts/triage.md
+  message: no longer loaded by Codex
+- path: <home>/.codex/rules/team.rules
+  message: rules file PromptStor does not manage; not imported
+- path: <home>/.codex/work.config.toml
+  message: profile file; not imported

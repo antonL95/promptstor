@@ -1,0 +1,9 @@
+[mcp_servers.project-db]
+command = "example-db"
+env_vars = ["DB_URL"]
+
+[[hooks.Stop]]
+
+[[hooks.Stop.hooks]]
+type = "command"
+command = "/opt/example/hooks/stop.sh"

@@ -1,0 +1,8 @@
+name = "security_reviewer"
+description = "Reviews for security risks."
+developer_instructions = """
+Do not edit files.
+"""
+model = "example-model"
+model_reasoning_effort = "high"
+sandbox_mode = "read-only"

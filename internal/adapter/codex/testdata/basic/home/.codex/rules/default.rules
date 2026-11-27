@@ -1,0 +1,3 @@
+prefix_rule(pattern=["make", "test"], decision="allow")
+
+network_rule(host="docs.example.com", protocol="https", decision="allow")

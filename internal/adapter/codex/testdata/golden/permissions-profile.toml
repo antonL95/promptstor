@@ -1,0 +1,10 @@
+[permissions.promptstor]
+extends = ":workspace"
+
+[permissions.promptstor.filesystem]
+"/etc/example/**" = "deny"
+"~/.ssh/**" = "deny"
+
+[permissions.promptstor.filesystem.":workspace_roots"]
+"**/.env" = "deny"
+"secrets/key.pem" = "deny"

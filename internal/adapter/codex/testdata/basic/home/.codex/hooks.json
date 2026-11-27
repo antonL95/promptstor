@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          { "type": "command", "command": "/opt/example/hooks/greet.sh", "timeout": 30, "statusMessage": "Greeting" }
+        ]
+      }
+    ]
+  }
+}

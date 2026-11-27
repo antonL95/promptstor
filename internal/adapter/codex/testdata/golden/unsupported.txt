@@ -1,0 +1,11 @@
+ps_agent: Codex has no scoped rules
+ps_skill: Codex does not load a skill without a description
+ps_cmd: Codex does not load a skill without a description
+ps_sub: Codex needs a description and instructions for a subagent
+ps_empty: Codex needs a description and instructions for a subagent
+ps_hook: no codex native entry
+ps_event: the codex hook has no event that Codex knows
+ps_tool: Codex hooks are keyed by the command of their first handler, and this hook has none
+ps_allow: Codex has no MCP server allow list
+ps_foreign: nothing in this permission applies to Codex
+ps_name: Codex rejects the server name; use letters, numbers, - _ : @ / .
