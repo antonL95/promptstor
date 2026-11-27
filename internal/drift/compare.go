@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"fmt"
 	"maps"
-	"path/filepath"
 	"slices"
 	"strings"
 
@@ -12,19 +11,15 @@ import (
 	"github.com/antonL95/promptstor/internal/library"
 )
 
-type itemKey struct {
-	kind library.Kind
-	name string
-}
-
 type occurrence struct {
-	name, source, body string
-	tools              []string
+	kind                    library.Kind
+	name, key, source, body string
+	tools                   []string
 }
 
 func CompareTools(imports map[string]adapter.Imported) []Finding {
 	var findings []Finding
-	groups := map[itemKey][]*occurrence{}
+	var all []*occurrence
 	tools := slices.Sorted(maps.Keys(imports))
 	for _, tool := range tools {
 		imported := imports[tool]
@@ -32,113 +27,88 @@ func CompareTools(imports map[string]adapter.Imported) []Finding {
 			findings = append(findings, unresolvedFinding(tool, u))
 		}
 		for _, it := range imported.Items {
-			if isPreamble(it) {
-				continue
+			if body := ruleBody(it); !titleOnly(body) {
+				all = addOccurrence(all, tool, it, body)
 			}
-			key := itemKey{kind: it.Kind, name: normalName(it.Name)}
-			groups[key] = addOccurrence(groups[key], tool, it)
 		}
 	}
-	for key, group := range groups {
-		findings = append(findings, differences(group)...)
-		findings = append(findings, onlyIn(key.kind, group, tools)...)
+	for _, o := range all {
+		findings = append(findings, compareOccurrence(o, all, tools)...)
 	}
 	return sorted(findings)
 }
 
-func addOccurrence(group []*occurrence, tool string, it library.Item) []*occurrence {
-	for _, o := range group {
-		if o.source == it.Source {
+func addOccurrence(all []*occurrence, tool string, it library.Item, body string) []*occurrence {
+	key := normalName(it.Name)
+	for _, o := range all {
+		if o.kind == it.Kind && o.source == it.Source && o.key == key {
 			if !slices.Contains(o.tools, tool) {
 				o.tools = append(o.tools, tool)
 			}
-			return group
+			return all
 		}
 	}
-	return append(group, &occurrence{
+	return append(all, &occurrence{
+		kind:   it.Kind,
 		name:   strings.TrimSpace(it.Name),
+		key:    key,
 		source: it.Source,
-		body:   normalBody(it.Body),
+		body:   body,
 		tools:  []string{tool},
 	})
 }
 
-func differences(group []*occurrence) []Finding {
-	variants := map[string][]*occurrence{}
-	for _, o := range group {
-		variants[o.body] = append(variants[o.body], o)
-	}
-	if len(variants) < 2 {
-		return nil
-	}
-	bodies := slices.SortedFunc(maps.Keys(variants), func(a, b string) int {
-		return cmp.Or(
-			cmp.Compare(toolCount(variants[b]), toolCount(variants[a])),
-			compareOccurrences(first(variants[a]), first(variants[b])),
-		)
-	})
-	reference := first(variants[bodies[0]])
-	var findings []Finding
-	for _, body := range bodies[1:] {
-		for _, o := range variants[body] {
-			findings = append(findings, Finding{
-				Kind:   KindDiffers,
-				Tool:   strings.Join(o.tools, ","),
-				Name:   o.name,
-				Path:   o.source,
-				Detail: fmt.Sprintf("differs from %s (%s)", strings.Join(reference.tools, ", "), reference.source),
-			})
+func compareOccurrence(o *occurrence, all []*occurrence, tools []string) []Finding {
+	var lacking []string
+	var counterparts []*occurrence
+	for _, tool := range tools {
+		if slices.Contains(o.tools, tool) || !supports(tool, o.kind) {
+			continue
 		}
+		held := slices.DeleteFunc(slices.Clone(all), func(other *occurrence) bool {
+			return other.kind != o.kind || !slices.Contains(other.tools, tool)
+		})
+		if slices.ContainsFunc(held, o.sameContent) {
+			continue
+		}
+		named := slices.DeleteFunc(held, func(other *occurrence) bool { return other.key != o.key })
+		if len(named) == 0 {
+			lacking = append(lacking, tool)
+			continue
+		}
+		counterparts = append(counterparts, named...)
+	}
+	var findings []Finding
+	if len(counterparts) > 0 {
+		if reference := slices.MinFunc(counterparts, rankOccurrences); rankOccurrences(reference, o) < 0 {
+			findings = append(findings, o.finding(KindDiffers, fmt.Sprintf("differs from %s (%s)", strings.Join(reference.tools, ", "), reference.source)))
+		}
+	}
+	if len(lacking) > 0 {
+		findings = append(findings, o.finding(KindOnlyIn, fmt.Sprintf("%s not in %s", o.kind, strings.Join(lacking, ", "))))
 	}
 	return findings
 }
 
-func onlyIn(kind library.Kind, group []*occurrence, tools []string) []Finding {
-	var holders []string
-	for _, o := range group {
-		holders = append(holders, o.tools...)
-	}
-	var lacking []string
-	for _, tool := range tools {
-		if !slices.Contains(holders, tool) && supports(tool, kind) {
-			lacking = append(lacking, tool)
-		}
-	}
-	if len(lacking) == 0 {
-		return nil
-	}
-	findings := make([]Finding, 0, len(group))
-	for _, o := range group {
-		findings = append(findings, Finding{
-			Kind:   KindOnlyIn,
-			Tool:   strings.Join(o.tools, ","),
-			Name:   o.name,
-			Path:   o.source,
-			Detail: fmt.Sprintf("%s not in %s", kind, strings.Join(lacking, ", ")),
-		})
-	}
-	return findings
+func (o *occurrence) sameContent(other *occurrence) bool {
+	return other.body == o.body && (o.kind == library.KindRule || other.key == o.key)
+}
+
+func (o *occurrence) finding(kind FindingKind, detail string) Finding {
+	return Finding{Kind: kind, Tool: strings.Join(o.tools, ","), Name: o.name, Path: o.source, Detail: detail}
+}
+
+func rankOccurrences(a, b *occurrence) int {
+	return cmp.Or(
+		cmp.Compare(len(b.tools), len(a.tools)),
+		cmp.Compare(a.tools[0], b.tools[0]),
+		cmp.Compare(a.source, b.source),
+	)
 }
 
 func supports(tool string, kind library.Kind) bool {
 	a, found := adapter.Get(tool)
 	return !found || a.Capabilities().Kinds[kind]
-}
-
-func toolCount(group []*occurrence) int {
-	count := 0
-	for _, o := range group {
-		count += len(o.tools)
-	}
-	return count
-}
-
-func first(group []*occurrence) *occurrence {
-	return slices.MinFunc(group, compareOccurrences)
-}
-
-func compareOccurrences(a, b *occurrence) int {
-	return cmp.Or(cmp.Compare(a.tools[0], b.tools[0]), cmp.Compare(a.source, b.source))
 }
 
 func unresolvedFinding(tool string, u adapter.Unresolved) Finding {
@@ -151,10 +121,25 @@ func unresolvedFinding(tool string, u adapter.Unresolved) Finding {
 	}
 }
 
-func isPreamble(it library.Item) bool {
-	base := filepath.Base(it.Source)
-	stem := strings.TrimSuffix(base, filepath.Ext(base))
-	return it.Kind == library.KindRule && it.Name == stem && stem == strings.ToUpper(stem)
+func ruleBody(it library.Item) string {
+	body := normalBody(it.Body)
+	if it.Kind != library.KindRule {
+		return body
+	}
+	first, rest, _ := strings.Cut(body, "\n")
+	if heading, found := strings.CutPrefix(first, "## "); found && normalName(heading) == normalName(it.Name) {
+		return normalBody(rest)
+	}
+	return body
+}
+
+func titleOnly(body string) bool {
+	for line := range strings.Lines(body) {
+		if !strings.HasPrefix(line, "#") {
+			return false
+		}
+	}
+	return true
 }
 
 func normalName(name string) string {

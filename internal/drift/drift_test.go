@@ -276,6 +276,53 @@ func TestCompareOnlyIn(t *testing.T) {
 	}
 }
 
+func TestComparePreambleContentCountsAsRules(t *testing.T) {
+	env := home(t)
+	writeFile(t, at(env, ".claude/CLAUDE.md"), "@~/notes/review.md\n")
+	writeFile(t, at(env, ".codex/AGENTS.md"), "Read the whole diff before commenting.\n")
+
+	findings := drift.CompareTools(importUser(t, env, adapter.ClaudeCode, adapter.Codex))
+
+	if len(findings) != 0 {
+		t.Errorf("preamble with the same text as a headed section reported:\n%s", dump(findings))
+	}
+
+	writeFile(t, at(env, ".codex/AGENTS.md"), "Read only the changed lines.\n")
+	findings = drift.CompareTools(importUser(t, env, adapter.ClaudeCode, adapter.Codex))
+
+	preamble := named(ofKind(findings, drift.KindOnlyIn), "AGENTS")
+	if len(preamble) != 1 || preamble[0].Tool != adapter.Codex || preamble[0].Path != at(env, ".codex/AGENTS.md") {
+		t.Errorf("changed preamble hidden:\n%s", dump(findings))
+	}
+}
+
+func TestCompareHeadinglessFileDiffers(t *testing.T) {
+	imports := map[string]adapter.Imported{
+		adapter.ClaudeCode: {Items: []library.Item{
+			rule("style", "Prefer short functions.", "/fixture/home/.claude/rules/style.md"),
+			rule("review", "Read the whole diff.", "/fixture/home/.claude/rules/review.md"),
+		}},
+		adapter.Cursor: {Items: []library.Item{
+			rule("style", "Prefer long functions.", "/fixture/home/.cursor/rules/style.mdc"),
+			rule("checklist", "Read the whole diff.", "/fixture/home/.cursor/rules/checklist.mdc"),
+			rule("empty", " \n\t\n", "/fixture/home/.cursor/rules/empty.mdc"),
+		}},
+	}
+
+	findings := drift.CompareTools(imports)
+
+	want := []drift.Finding{{
+		Kind:   drift.KindDiffers,
+		Tool:   adapter.Cursor,
+		Name:   "style",
+		Path:   "/fixture/home/.cursor/rules/style.mdc",
+		Detail: "differs from claude-code (/fixture/home/.claude/rules/style.md)",
+	}}
+	if !slices.Equal(findings, want) {
+		t.Errorf("got\n%swant\n%s", dump(findings), dump(want))
+	}
+}
+
 func TestCompareToolsIsDeterministic(t *testing.T) {
 	env := home(t)
 	imports := importUser(t, env, adapter.ClaudeCode, adapter.Codex, adapter.GeminiCLI, adapter.Antigravity)
