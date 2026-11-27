@@ -3,9 +3,8 @@ package antigravity
 import (
 	"maps"
 	"os"
-	"regexp"
+	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/antonL95/promptstor/internal/adapter"
@@ -16,7 +15,6 @@ import (
 )
 
 const (
-	reasonUnconfirmed   = "unconfirmed syntax"
 	noteShared          = "shared with Gemini CLI"
 	noteUnreadableRules = "not a readable file; rules not imported"
 	noteManualRule      = "manual rules have no PromptStor activation; not imported"
@@ -25,11 +23,6 @@ const (
 	noteFrontmatter     = "frontmatter %v; not imported"
 	noteRuleKey         = "frontmatter key %s not imported"
 )
-
-var labelledImports = mdimport.Syntax{
-	Name: tool,
-	Line: regexp.MustCompile(`(?:^|\s)@(?P<path>\[[^\]]*\]\([^)]*\))`),
-}
 
 func (im *importer) rules() error {
 	err := im.markdownFiles(im.l.in(rulesDir), im.modularRule)
@@ -61,17 +54,34 @@ func (im *importer) memory(path string) (bool, error) {
 	if err != nil || !found {
 		return false, err
 	}
-	im.unresolved(path, data)
-	im.out.Items = append(im.out.Items, mdrules.Split(data, path)...)
+	items, err := im.ruleItems(path, data)
+	if err != nil {
+		return false, err
+	}
+	im.out.Items = append(im.out.Items, items...)
 	return true, nil
 }
 
-func (im *importer) unresolved(path string, data []byte) {
-	for _, found := range mdimport.Find(data, labelledImports) {
-		im.out.Unresolved = append(im.out.Unresolved, adapter.Unresolved{
-			File: path, Line: strconv.Itoa(found.Line), Target: found.Token, Reason: reasonUnconfirmed,
-		})
+func (im *importer) ruleItems(path string, body []byte) ([]library.Item, error) {
+	resolved, err := mdimport.Resolve(im.t.Env, path, mdimport.Antigravity)
+	if err != nil {
+		return nil, err
 	}
+	im.out.Unresolved = append(im.out.Unresolved, resolved.Unresolved...)
+	var items []library.Item
+	for _, file := range resolved.Files {
+		text := body
+		if file.Depth > 0 {
+			included, err := library.ParseMarkdown(library.KindRule, filepath.Base(file.Path), managed.StripNotice(file.Body))
+			if err != nil {
+				im.note(file.Path, noteFrontmatter, err)
+				continue
+			}
+			text = []byte(included.Body)
+		}
+		items = append(items, mdrules.Split(mdimport.StripImportLines(text, mdimport.Antigravity), file.Path)...)
+	}
+	return items, nil
 }
 
 func (im *importer) modularRule(path, name string) error {
@@ -94,8 +104,11 @@ func (im *importer) modularRule(path, name string) error {
 			im.note(path, noteRuleKey, key)
 		}
 	}
-	im.unresolved(path, data)
-	for _, it := range mdrules.Split([]byte(parsed.Body), path) {
+	items, err := im.ruleItems(path, []byte(parsed.Body))
+	if err != nil {
+		return err
+	}
+	for _, it := range items {
 		it.Description, it.Activation, it.Scope = parsed.Description, activation, slices.Clone(scope)
 		if im.l.scope == adapter.ScopeProject {
 			it.Targets = library.Targets{Include: []string{tool}}

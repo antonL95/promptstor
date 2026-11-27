@@ -322,21 +322,55 @@ func TestImportProjectScope(t *testing.T) {
 	testenv.Golden(t, "testdata/golden/import-project.yaml", importYAML(t, tg, importFrom(t, tg)))
 }
 
-func TestAtLabelImportsUnresolved(t *testing.T) {
+func TestRuleIncludesImported(t *testing.T) {
 	tg := target(t, "basic", adapter.ScopeUser, adapter.Antigravity)
 	imported := importFrom(t, tg)
-	config := filepath.Join(tg.Env.Home, ".gemini", "config")
+	if len(imported.Unresolved) != 0 {
+		t.Errorf("unresolved %+v", imported.Unresolved)
+	}
+	checklist := find(t, imported.Items, library.KindRule, "Checklist")
+	if checklist.Source != filepath.Join(tg.Env.Home, ".gemini", "config", "checklists", "release.md") ||
+		checklist.Activation != library.ActivationAgent || checklist.Description != "Use when preparing a release." ||
+		checklist.Body != "## Checklist\n\nTag the release.\n" {
+		t.Errorf("included rule %+v", checklist)
+	}
+	if style := find(t, imported.Items, library.KindRule, "Style notes"); style.Source != filepath.Join(tg.Env.Home, "notes", "style.md") || style.Activation != "" {
+		t.Errorf("home include %+v", style)
+	}
+	if release := find(t, imported.Items, library.KindRule, "release"); strings.Contains(release.Body, "@[Release checklist]") || !strings.Contains(release.Body, "@[Fenced]") {
+		t.Errorf("including rule %q", release.Body)
+	}
+	project := target(t, "basic", adapter.ScopeProject, adapter.Antigravity)
+	notes := find(t, importFrom(t, project).Items, library.KindRule, "notes")
+	if notes.Source != filepath.Join(project.ProjectRoot, ".agents", "notes.md") || !reflect.DeepEqual(notes.Targets.Include, []string{adapter.Antigravity}) {
+		t.Errorf("project include %+v", notes)
+	}
+}
+
+func TestUnreadableIncludesReported(t *testing.T) {
+	tg := emptyTarget(t, adapter.ScopeUser, adapter.Antigravity)
+	rules := filepath.Join(tg.Env.Home, ".gemini", "config", "rules")
+	main := filepath.Join(rules, "main.md")
+	write(t, main, "---\ntrigger: always_on\n---\n@[Gone](gone.md)\n@[Key](~/.codex/auth.json)\n@[Broken](../broken.md)\nKept.\n")
+	write(t, filepath.Join(tg.Env.Home, ".codex", "auth.json"), "fixture-secret-value\n")
+	write(t, filepath.Join(tg.Env.Home, ".gemini", "config", "broken.md"), "---\nunclosed\n")
+	imported := importFrom(t, tg)
 	want := []adapter.Unresolved{
-		{File: filepath.Join(config, "rules", "release.md"), Line: "7", Target: "[Release checklist](../checklists/release.md)", Reason: "unconfirmed syntax"},
-		{File: filepath.Join(config, "AGENTS.md"), Line: "4", Target: "[Style](~/notes/style.md)", Reason: "unconfirmed syntax"},
+		{File: main, Line: "4", Target: "[Gone](gone.md)", Reason: "missing"},
+		{File: main, Line: "5", Target: "[Key](~/.codex/auth.json)", Reason: "credential file"},
 	}
 	if !reflect.DeepEqual(imported.Unresolved, want) {
 		t.Errorf("unresolved %+v", imported.Unresolved)
 	}
-	for _, it := range imported.Items {
-		if strings.Contains(it.Source, "checklists") {
-			t.Errorf("followed %+v", it)
-		}
+	if bytes.Contains(importYAML(t, tg, imported), []byte("fixture-secret-value")) {
+		t.Error("import carries a credential")
+	}
+	broken := filepath.Join(tg.Env.Home, ".gemini", "config", "broken.md")
+	if len(imported.Notes) != 1 || imported.Notes[0].Path != broken {
+		t.Errorf("notes %+v", imported.Notes)
+	}
+	if len(imported.Items) != 1 || imported.Items[0].Body != "Kept.\n" {
+		t.Errorf("items %+v", imported.Items)
 	}
 }
 

@@ -21,11 +21,19 @@ items:
   body: |
     Update the changelog.
 
-    @[Release checklist](../checklists/release.md)
-
     ```
     @[Fenced](not-an-include.md)
     ```
+- kind: rule
+  name: Checklist
+  order: 10
+  source: <home>/.gemini/config/checklists/release.md
+  description: Use when preparing a release.
+  activation: agent
+  body: |
+    ## Checklist
+
+    Tag the release.
 - kind: rule
   name: Antigravity notes
   order: 10
@@ -34,7 +42,14 @@ items:
     ## Antigravity notes
 
     Plan before editing.
-    @[Style](~/notes/style.md)
+- kind: rule
+  name: Style notes
+  order: 10
+  source: <home>/notes/style.md
+  body: |
+    ## Style notes
+
+    Short names.
 - kind: rule
   name: Reviews
   order: 10
@@ -195,12 +210,3 @@ notes:
   message: manual rules have no PromptStor activation; not imported
 - path: <home>/.gemini/config/rules/camel.md
   message: Antigravity discards a rule without a valid trigger; not imported
-unresolved:
-- file: <home>/.gemini/config/rules/release.md
-  line: "7"
-  target: '[Release checklist](../checklists/release.md)'
-  reason: unconfirmed syntax
-- file: <home>/.gemini/config/AGENTS.md
-  line: "4"
-  target: '[Style](~/notes/style.md)'
-  reason: unconfirmed syntax

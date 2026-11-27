@@ -35,6 +35,7 @@ The research pass also read the docs that ship inside the app as builtin skills.
 ## Formats
 
 - Rules (RULES): `trigger` is required and is `always_on`, `model_decision`, `glob` or `manual`. A missing or unknown trigger discards the rule. `description` is required for `model_decision`. `globs` (alias `glob`) is one comma separated string. Limits are 24,000 bytes per file and a 20,000 token budget for global and always on rules.
+- Includes (https://antigravity.google/docs/rules, section "File includes", checked 2026-11-27): `@[label](path)` inlines the target into any rule file. A relative path starts at the folder of the including file, `~/` is the home folder, and frontmatter in the included file is stripped. `@filename` does not inline. The page gives no depth limit, so the adapter follows at most five hops (`mdimport.Antigravity`). It does not say whether absolute paths or nested includes work. The adapter follows both. Included files become their own rule items that keep the activation of the including rule.
 - Globs (bundled): matched against absolute paths and file names, so a relative pattern with a folder needs a `**/` prefix. There is no brace expansion.
 - Skills (SKILLS): `description` is required and `name` defaults to the folder name. No other frontmatter field is documented, so `disable-model-invocation` is never written.
 - Subagents (SUB): `name`, `description`, `tools`, `mainAgent`, `subagent`, `model` (`inherit`, `flash`, `pro`), `commandExecutionPolicy` (`off`, `auto`, `eager`, `sandbox`), `mcpServers`, `skills`, `plugins`. A misspelled tool name can hang the subagent. The adapter carries these as item meta with an `antigravity_` prefix and never carries `mcpServers`. Built in names are `research`, `browser` and `self`.
@@ -52,7 +53,7 @@ The research pass also read the docs that ship inside the app as builtin skills.
 
 ## Still unconfirmed
 
-- The `@[label](path)` include. A/rules now documents it (section "File includes"), but the owner decision for release 1 treats it as unconfirmed: each line is reported as unresolved and is not followed.
+- A depth limit for `@[label](path)` includes.
 - Where the App and IDE keep permissions. Every deny therefore needs an acknowledgement.
 - Whether the App rewrites `mcp_config.json` beyond the `disabled` field.
 - The meaning of `import_manifest.json` fields. The file is reported as foreign and never read.

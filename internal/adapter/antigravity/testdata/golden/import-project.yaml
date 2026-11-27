@@ -21,8 +21,15 @@ items:
     ## Style
 
     Use tabs.
-
-    @[Notes](../notes.md)
+- kind: rule
+  name: notes
+  order: 10
+  source: <project>/.agents/notes.md
+  description: Project style
+  targets:
+  - antigravity
+  body: |
+    Project notes.
 - kind: subagent
   name: docs-writer
   source: <project>/.agents/agents/docs-writer.md
@@ -55,8 +62,3 @@ notes:
   message: 'server project-docs: field cwd not imported'
 - path: <project>/.agents/workflows
   message: deprecated workflows; not imported
-unresolved:
-- file: <project>/.agents/rules/style.md
-  line: "9"
-  target: '[Notes](../notes.md)'
-  reason: unconfirmed syntax

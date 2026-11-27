@@ -212,6 +212,71 @@ func TestResolveNeverReadsCredentialFiles(t *testing.T) {
 	}
 }
 
+func TestResolveAntigravityInclude(t *testing.T) {
+	home := t.TempDir()
+	outside := t.TempDir()
+	writeFiles(t, outside, map[string]string{"absolute.md": "Absolute.\n"})
+	absolute := filepath.Join(outside, "absolute.md")
+	writeFiles(t, home, map[string]string{
+		".gemini/config/rules/main.md": "@[Relative](../shared/relative.md)\nSee @[Home](~/notes/home.md) and @[Absolute](" + absolute + ").\n" +
+			"Not an include: @plain.md and [a link](link.md) and `@[Code](code.md)`.\n```\n@[Fenced](fenced.md)\n```\n",
+		".gemini/config/shared/relative.md":      "@[Nested](deeper/nested.md)\n",
+		".gemini/config/shared/deeper/nested.md": "Nested.\n",
+		"notes/home.md":                          "Home.\n",
+	})
+	resolved := resolve(t, env(home), filepath.Join(home, ".gemini", "config", "rules", "main.md"), mdimport.Antigravity)
+	var got []string
+	for _, f := range resolved.Files {
+		got = append(got, f.Path)
+	}
+	want := []string{
+		filepath.Join(home, ".gemini", "config", "rules", "main.md"),
+		filepath.Join(home, ".gemini", "config", "shared", "relative.md"),
+		filepath.Join(home, ".gemini", "config", "shared", "deeper", "nested.md"),
+		filepath.Join(home, "notes", "home.md"),
+		absolute,
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("files %v", got)
+	}
+	if len(resolved.Unresolved) != 0 {
+		t.Errorf("unresolved %+v", resolved.Unresolved)
+	}
+}
+
+func TestResolveAntigravityMissingAndCycle(t *testing.T) {
+	root := t.TempDir()
+	writeFiles(t, root, map[string]string{
+		"main.md":  "@[Gone](gone.md)\n@[A](a.md)\n@[Remote](https://example.com/x.md)\n@[Empty]()\n",
+		"a.md":     "@[Back](main.md)\n",
+		"one.md":   "@[2](two.md)\n",
+		"two.md":   "@[3](three.md)\n",
+		"three.md": "@[4](four.md)\n",
+		"four.md":  "@[5](five.md)\n",
+		"five.md":  "@[6](six.md)\n",
+		"six.md":   "@[7](seven.md)\n",
+		"seven.md": "Too deep.\n",
+	})
+	resolved := resolve(t, env(root), filepath.Join(root, "main.md"), mdimport.Antigravity)
+	if got := files(root, resolved); !reflect.DeepEqual(got, []string{"main.md@0", "a.md@1"}) {
+		t.Errorf("files %v", got)
+	}
+	want := []adapter.Unresolved{
+		{File: "main.md", Line: "1", Target: "[Gone](gone.md)", Reason: "missing"},
+		{File: "a.md", Line: "1", Target: "[Back](main.md)", Reason: "cycle"},
+		{File: "main.md", Line: "3", Target: "[Remote](https://example.com/x.md)", Reason: "syntax"},
+		{File: "main.md", Line: "4", Target: "[Empty]()", Reason: "syntax"},
+	}
+	if got := relativeUnresolved(root, resolved); !reflect.DeepEqual(got, want) {
+		t.Errorf("unresolved %+v", got)
+	}
+	deep := resolve(t, env(root), filepath.Join(root, "one.md"), mdimport.Antigravity)
+	wantDeep := []adapter.Unresolved{{File: "six.md", Line: "1", Target: "[7](seven.md)", Reason: "depth"}}
+	if got := relativeUnresolved(root, deep); len(deep.Files) != 6 || !reflect.DeepEqual(got, wantDeep) {
+		t.Errorf("files %v unresolved %+v", files(root, deep), got)
+	}
+}
+
 func TestResolveRootMissingIsAnError(t *testing.T) {
 	root := t.TempDir()
 	if _, err := mdimport.Resolve(env(root), filepath.Join(root, "CLAUDE.md"), mdimport.Claude); err == nil {

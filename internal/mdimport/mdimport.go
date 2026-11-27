@@ -47,6 +47,14 @@ var Gemini = Syntax{
 	MaxDepth:         5,
 }
 
+var Antigravity = Syntax{
+	Name:          "antigravity",
+	Line:          regexp.MustCompile(`(?:^|\s)@\[[^\]]*\]\((?P<path>[^)]*)\)`),
+	AllowTilde:    true,
+	AllowAbsolute: true,
+	MaxDepth:      5,
+}
+
 type ResolvedFile struct {
 	Path  string
 	Body  []byte
