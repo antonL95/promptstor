@@ -326,3 +326,26 @@ func TestElementKeyDoesNotSupportAtInArrayPointer(t *testing.T) {
 		t.Error("expected an error")
 	}
 }
+
+func TestForToolMatchesAnyMemberOfSharedEntry(t *testing.T) {
+	var m Manifest
+	m.Put(entry("claude-code,codex", "/skills/x/SKILL.md", UnitFile, ""))
+	m.Put(entry("codex", "/b", UnitFile, ""))
+	m.Put(entry("gemini-cli", "/c", UnitFile, ""))
+	for tool, want := range map[string][]string{
+		"claude-code": {"/skills/x/SKILL.md"},
+		"codex":       {"/b", "/skills/x/SKILL.md"},
+		"gemini-cli":  {"/c"},
+		"code":        nil,
+		"claude":      nil,
+		"":            nil,
+	} {
+		var got []string
+		for _, e := range m.ForTool(tool) {
+			got = append(got, e.Path)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("ForTool(%q) = %v, want %v", tool, got, want)
+		}
+	}
+}

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/antonL95/promptstor/internal/fsx"
@@ -88,7 +89,11 @@ func (m *Manifest) Remove(path string, u UnitKind, key string) {
 }
 
 func (m *Manifest) ForTool(tool string) []Entry {
-	return m.matching(func(e Entry) bool { return e.Tool == tool })
+	return m.matching(func(e Entry) bool { return slices.Contains(e.Tools(), tool) })
+}
+
+func (e Entry) Tools() []string {
+	return strings.Split(e.Tool, ",")
 }
 
 func (m *Manifest) ForPath(path string) []Entry {

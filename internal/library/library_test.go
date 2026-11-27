@@ -740,3 +740,19 @@ func TestContentHashChangesOnRenameAndKind(t *testing.T) {
 		t.Error("a rule and a command with the same ID, name and body share a hash")
 	}
 }
+
+func TestMetaKeysKeepFileOrder(t *testing.T) {
+	skill := find(t, load(t, fixture), KindSkill, "release-notes")
+	if got, want := skill.MetaKeys(), []string{"allowed-tools", "x-example-unknown", "model"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("loaded order %v, want %v", got, want)
+	}
+	skill.Meta["added"] = true
+	delete(skill.Meta, "model")
+	if got, want := skill.MetaKeys(), []string{"allowed-tools", "x-example-unknown", "added"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("edited order %v, want %v", got, want)
+	}
+	built := Item{Kind: KindSkill, Name: "x", Meta: map[string]any{"b": 1, "a": 2}}
+	if got, want := built.MetaKeys(), []string{"a", "b"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("built order %v, want %v", got, want)
+	}
+}

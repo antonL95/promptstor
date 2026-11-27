@@ -2,6 +2,8 @@ package library
 
 import (
 	"io/fs"
+	"maps"
+	"slices"
 
 	"go.yaml.in/yaml/v3"
 )
@@ -81,3 +83,21 @@ type File struct {
 }
 
 type metaNode struct{ key, value *yaml.Node }
+
+func (it Item) MetaKeys() []string {
+	keys := make([]string, 0, len(it.Meta))
+	seen := map[string]bool{}
+	for _, original := range it.metaOrder {
+		key := original.key.Value
+		if _, present := it.Meta[key]; present && !seen[key] {
+			seen[key] = true
+			keys = append(keys, key)
+		}
+	}
+	for _, key := range slices.Sorted(maps.Keys(it.Meta)) {
+		if !seen[key] {
+			keys = append(keys, key)
+		}
+	}
+	return keys
+}

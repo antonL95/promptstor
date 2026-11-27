@@ -1,0 +1,8 @@
+{
+  "model": "example-model",
+  "permissions": {
+    "allow": [
+      "Bash(ls)"
+    ]
+  }
+}
