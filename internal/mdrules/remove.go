@@ -50,10 +50,10 @@ func Remove(doc []byte, rules []library.Item) ([]byte, error) {
 }
 
 func (r *remover) drops(line string) bool {
-	switch {
-	case line == managed.Begin:
+	switch line {
+	case managed.Begin:
 		r.inside = true
-	case line == managed.End:
+	case managed.End:
 		r.inside = false
 		r.dropped = false
 		return false
