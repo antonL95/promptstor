@@ -3,11 +3,15 @@ package doctor
 import (
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/antonL95/promptstor/internal/adapter"
 	"github.com/antonL95/promptstor/internal/backup"
+	"github.com/antonL95/promptstor/internal/fsx"
 	"github.com/antonL95/promptstor/internal/plan"
 )
+
+const lockWait = 5 * time.Second
 
 func (d *doctor) snapshotEntries(found []detected) []plan.SnapshotEntry {
 	tools := installedTools(found)
@@ -28,6 +32,11 @@ func (d *doctor) snapshotEntries(found []detected) []plan.SnapshotEntry {
 }
 
 func (d *doctor) takeEntries(entries []plan.SnapshotEntry) (string, error) {
+	held, err := fsx.Hold(d.e.Env.LockPath(), lockWait)
+	if err != nil {
+		return "", err
+	}
+	defer held.Release()
 	snap, err := d.e.Backups().Take(backup.ReasonFirstRun, entries)
 	if err != nil {
 		return "", err

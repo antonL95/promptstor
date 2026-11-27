@@ -18,6 +18,7 @@ import (
 	"github.com/antonL95/promptstor/internal/doctor"
 	"github.com/antonL95/promptstor/internal/drift"
 	"github.com/antonL95/promptstor/internal/engine"
+	"github.com/antonL95/promptstor/internal/fsx"
 	"github.com/antonL95/promptstor/internal/library"
 	"github.com/antonL95/promptstor/internal/paths"
 	"github.com/antonL95/promptstor/internal/policy"
@@ -236,6 +237,26 @@ func TestFirstRunSnapshotBeforeLibraryWrite(t *testing.T) {
 		}
 		if after := testenv.TreeHash(t, env.Home); after != before {
 			t.Fatal("doctor wrote before the snapshot was taken")
+		}
+	})
+	t.Run("another run holds the lock", func(t *testing.T) {
+		env := fixtureHome(t)
+		held, err := fsx.Hold(env.LockPath(), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer held.Release()
+		var out bytes.Buffer
+		s := &script{answers: []answer{{applyChanges, "yes"}}}
+		if _, err := doctor.Run(newEngine(t, env), s, &out, doctor.Options{}); !errors.Is(err, fsx.ErrLocked) {
+			t.Fatalf("error %v, want the lock to be refused", err)
+		}
+		snaps, err := backup.Store{Env: env}.List()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(snaps) != 0 {
+			t.Errorf("a snapshot was taken while another run held the lock: %v", snaps)
 		}
 	})
 	t.Run("snapshot covers every detected tool", func(t *testing.T) {
