@@ -28,6 +28,7 @@ func main() {
 		Run:    runCommand,
 		RunIn:  runCommandIn,
 		Binary: binaryPath(),
+		TTY:    isTerminal(os.Stdin),
 	})
 	if err := root.Execute(); err != nil {
 		var exit cli.ExitCode
@@ -48,6 +49,11 @@ func binaryPath() string {
 		return ""
 	}
 	return resolved
+}
+
+func isTerminal(f *os.File) bool {
+	info, err := f.Stat()
+	return err == nil && info.Mode()&os.ModeCharDevice != 0
 }
 
 func runCommand(name string, args ...string) ([]byte, error) {

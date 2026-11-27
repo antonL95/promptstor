@@ -20,6 +20,10 @@ func (d Deps) engine() (engine.Engine, error) {
 	if err != nil {
 		return engine.Engine{}, err
 	}
+	return d.engineFor(cfg)
+}
+
+func (d Deps) engineFor(cfg config.Config) (engine.Engine, error) {
 	acks, err := policy.LoadAcks(d.Env.AcksPath())
 	if err != nil {
 		return engine.Engine{}, err
