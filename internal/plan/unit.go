@@ -44,6 +44,7 @@ type FileChange struct {
 type Options struct {
 	ReplaceSymlinks, Adopt []string
 	SharedState            []string
+	External               []string
 	Keep                   []manifest.Entry
 }
 

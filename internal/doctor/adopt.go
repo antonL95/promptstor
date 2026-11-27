@@ -38,7 +38,7 @@ func scopeRoot(t adapter.Target) string {
 	return t.Env.Home
 }
 
-func (d *doctor) collectFiles(cands []*candidate) (adoption, error) {
+func (d *doctor) collectFiles(cands []*candidate, external func(string) bool) (adoption, error) {
 	var a adoption
 	bySource := map[string]*deletion{}
 	for _, c := range keptCandidates(cands) {
@@ -46,7 +46,7 @@ func (d *doctor) collectFiles(cands []*candidate) (adoption, error) {
 		case library.KindPermission, library.KindHook, library.KindMCP:
 			continue
 		}
-		if handWritten(c.it) || c.it.Source == "" {
+		if handWritten(c.it) || c.it.Source == "" || external(c.it.Source) {
 			continue
 		}
 		ad, ok := d.adapter(c.tool)
@@ -64,13 +64,13 @@ func (d *doctor) collectFiles(cands []*candidate) (adoption, error) {
 			switch {
 			case u.Kind == manifest.UnitFile && (u.Path == c.it.Source || strings.HasPrefix(u.Path, c.it.Source+string(filepath.Separator))):
 				same = append(same, u.Path)
-			default:
+			case !external(u.Path):
 				elsewhere = append(elsewhere, u.Path)
 			}
 		}
 		if len(same) > 0 {
 			for _, path := range same {
-				if entry, err := fsx.Inspect(path); err == nil && entry.Exists && !slices.Contains(a.adopt, path) {
+				if entry, err := fsx.Inspect(path); err == nil && entry.Exists && !external(path) && !slices.Contains(a.adopt, path) {
 					a.adopt = append(a.adopt, path)
 				}
 			}

@@ -241,6 +241,8 @@ func blockedFinding(fc plan.FileChange) Finding {
 		kind = KindSymlinked
 	case strings.HasPrefix(fc.Blocked, plan.ReasonConflict):
 		kind = KindSharedConflict
+	case strings.HasPrefix(fc.Blocked, plan.ReasonExternal):
+		kind = KindExternal
 	}
 	tools := map[string]bool{}
 	f := Finding{Kind: kind, Path: fc.Path, Detail: fc.Blocked}

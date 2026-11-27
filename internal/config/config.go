@@ -32,6 +32,7 @@ type Config struct {
 	RegisterMCP      bool     `yaml:"register_mcp"`
 	OpenProjectPRs   bool     `yaml:"open_project_prs"`
 	ResolveSecrets   []string `yaml:"resolve_secrets,omitempty"`
+	External         []string `yaml:"external,omitempty"`
 }
 
 type Project struct {

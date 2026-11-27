@@ -65,7 +65,7 @@ func Diff(desired []Unit, m manifest.Manifest, tools []string, opt Options) ([]F
 		}
 	}
 	for _, e := range m.Entries {
-		if _, wanted := groups[unitKey{e.Path, e.Unit, e.Key}]; wanted || kept(opt.Keep, e) {
+		if _, wanted := groups[unitKey{e.Path, e.Unit, e.Key}]; wanted || kept(opt.Keep, e) || External(opt.External, e.Path) {
 			continue
 		}
 		remaining := slices.DeleteFunc(e.Tools(), func(tool string) bool { return slices.Contains(tools, tool) })
@@ -183,6 +183,9 @@ func planFile(draft *fileDraft, m *manifest.Manifest, opt Options) FileChange {
 		Retagged:    draft.retagged,
 		Op:          OpNoop,
 		SharedState: slices.Contains(opt.SharedState, draft.path),
+	}
+	if ext, found := ExternalFor(opt.External, c.Path); found {
+		return blocked(c, ReasonExternal+ext)
 	}
 	if releasesOnly(draft) {
 		return c

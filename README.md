@@ -49,6 +49,7 @@ Edit items in `~/.config/promptstor/library/` (see [library format](docs/library
 | `promptstor sync --project <dir>` | Also sync a repository |
 | `promptstor doctor` | Report drift and ask how to resolve it |
 | `promptstor doctor --check` | Report drift without asking. Exit code 0 is clean, 1 is drift, 2 is an error. Add `--json` for JSON. |
+| `promptstor external list` | Show the files another tool or script writes. Also `external add <path>` and `external remove <path>`. |
 | `promptstor status` | Show the last check, the library hash and the selected tools |
 | `promptstor check --ci` | In a repository, compare the committed files with `.promptstor/` (see [CI check](docs/ci.md)) |
 | `promptstor restore --list` | List snapshots, newest first |
@@ -90,6 +91,7 @@ Snapshots keep your configuration files whole, including secrets already in them
 - A deny that a tool cannot fully enforce waits for your acknowledgement, which `promptstor doctor` asks for. In a repository, commit `.promptstor/acks.json` to acknowledge it for the team (see [CI check](docs/ci.md)).
 - Personal and device items are never written into project files.
 - Symlinked configuration is reported and left alone. `promptstor sync --replace-symlink <path>` replaces a symlinked file with a regular one and takes it over.
+- Some files are written by another tool or script, such as a dotfiles setup that generates `~/.codex/AGENTS.md`. On the first run, `promptstor doctor` lists every file it would change and asks which of them something else writes. PromptStor never adopts, writes or deletes those files and reports them as `external` in every drift report. `promptstor external list`, `promptstor external add <path>` and `promptstor external remove <path>` change that list later. A directory covers every file inside it.
 
 ## Release 1 limits
 

@@ -783,7 +783,7 @@ func TestCleanKinds(t *testing.T) {
 			t.Errorf("%s: clean %v, want %v", kind, got, want)
 		}
 	}
-	if len(drift.Kinds()) != 16 {
+	if len(drift.Kinds()) != 17 {
 		t.Errorf("%d kinds", len(drift.Kinds()))
 	}
 }
@@ -833,5 +833,29 @@ func TestLastCheckRoundTrip(t *testing.T) {
 	}
 	if info.Mode().Perm() != 0o600 {
 		t.Errorf("mode %v", info.Mode().Perm())
+	}
+}
+
+func TestDriftReportsExternal(t *testing.T) {
+	env := home(t)
+	e := newEngine(env, adapter.ClaudeCode, adapter.GeminiCLI)
+	mustSync(t, e, "")
+	claudeMD := at(env, ".claude/CLAUDE.md")
+	replaceIn(t, claudeMD, "Write in plain language.", "Written by a script.")
+	e.Config.External = []string{claudeMD}
+
+	r := mustCheck(t, e, "")
+
+	external := ofKind(r.Findings, drift.KindExternal)
+	if len(external) != 1 || external[0].Path != claudeMD || external[0].Detail != "managed externally: "+claudeMD || external[0].Tool != adapter.ClaudeCode {
+		t.Errorf("external:\n%s", dump(r.Findings))
+	}
+	for _, f := range r.Findings {
+		if f.Path == claudeMD && f.Kind != drift.KindExternal {
+			t.Errorf("external path also reported as %s", f.Kind)
+		}
+	}
+	if !r.Clean() {
+		t.Errorf("external finding makes the report unclean:\n%s", dump(r.Findings))
 	}
 }

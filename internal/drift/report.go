@@ -31,6 +31,7 @@ const (
 	KindLockViolation    FindingKind = "lock-violation"
 	KindUnresolvedImport FindingKind = "unresolved-import"
 	KindIgnoredFile      FindingKind = "ignored-file"
+	KindExternal         FindingKind = "external"
 	KindInfo             FindingKind = "info"
 )
 
@@ -40,7 +41,7 @@ func Kinds() []FindingKind {
 	return []FindingKind{
 		KindDiffers, KindOnlyIn, KindMissing, KindPending, KindHandEdit, KindUnsupported,
 		KindAckRequired, KindRuntimeGrant, KindSymlinked, KindForeign, KindNeedsSetup,
-		KindSharedConflict, KindLockViolation, KindUnresolvedImport, KindIgnoredFile, KindInfo,
+		KindSharedConflict, KindLockViolation, KindUnresolvedImport, KindIgnoredFile, KindExternal, KindInfo,
 	}
 }
 

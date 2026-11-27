@@ -33,7 +33,7 @@ func (c checker) held(changes []plan.FileChange) ([]Finding, error) {
 	}
 	byPath := map[string][]manifest.Entry{}
 	for _, e := range c.manifest.Entries {
-		if roots[e.Root] && !e.Adopted && !covered[unitKey{e.Path, e.Unit, e.Key}] {
+		if roots[e.Root] && !e.Adopted && !covered[unitKey{e.Path, e.Unit, e.Key}] && !plan.External(c.e.Config.External, e.Path) {
 			byPath[e.Path] = append(byPath[e.Path], e)
 		}
 	}

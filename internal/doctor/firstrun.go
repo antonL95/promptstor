@@ -24,6 +24,7 @@ type firstRunState struct {
 	moves    []*move
 	adoption adoption
 	snapshot string
+	external []string
 }
 
 func (d *doctor) firstRun() (int, error) {
@@ -35,7 +36,7 @@ func (d *doctor) firstRun() (int, error) {
 		d.w.printf(noToolsDetected)
 		return 0, nil
 	}
-	steps := []func(*firstRunState) error{d.discover, d.compareAndPull, d.adopt, d.snapshot, d.writeLibrary}
+	steps := []func(*firstRunState) error{d.discover, d.compareAndPull, d.askExternal, d.adopt, d.snapshot, d.writeLibrary}
 	for _, step := range steps {
 		if err := step(s); err != nil {
 			return 0, err
@@ -70,7 +71,7 @@ func (d *doctor) compareAndPull(s *firstRunState) error {
 }
 
 func (d *doctor) adopt(s *firstRunState) error {
-	moves, err := d.collectMoves(s.scopes, s.cands, s.selected)
+	moves, err := d.collectMoves(s.scopes, s.cands, s.selected, s.external)
 	if err != nil {
 		return err
 	}
@@ -81,7 +82,7 @@ func (d *doctor) adopt(s *firstRunState) error {
 	if err := d.prepareMoves(s.moves, false); err != nil {
 		return err
 	}
-	a, err := d.collectFiles(s.cands)
+	a, err := d.collectFiles(s.cands, s.isExternal)
 	s.adoption = a
 	return err
 }
@@ -110,7 +111,7 @@ func (d *doctor) writeLibrary(s *firstRunState) error {
 }
 
 func (d *doctor) configure(s *firstRunState) (config.Config, error) {
-	cfg := config.Config{Version: 1, Primary: s.primary, Tools: s.selected, Adopted: s.adoption.adopt}
+	cfg := config.Config{Version: 1, Primary: s.primary, Tools: s.selected, Adopted: s.adoption.adopt, External: s.external}
 	d.w.printf(noteGuards)
 	guards, err := d.p.Confirm(questionGuards, true)
 	if err != nil {

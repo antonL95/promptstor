@@ -42,7 +42,7 @@ type exportTargets struct {
 	units map[string][]plan.Unit
 }
 
-func (d *doctor) collectMoves(scopes []scopeImports, cands []*candidate, selected []string) ([]*move, error) {
+func (d *doctor) collectMoves(scopes []scopeImports, cands []*candidate, selected, external []string) ([]*move, error) {
 	m, err := manifest.Load(d.e.Env.ManifestPath())
 	if err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ func (d *doctor) collectMoves(scopes []scopeImports, cands []*candidate, selecte
 			return nil, err
 		}
 		for _, path := range slices.Sorted(maps.Keys(targets.owner)) {
-			if reason, err := blockedReason(targets.units[path], m, tools); err != nil || reason != "" {
+			if reason, err := blockedReason(targets.units[path], m, tools, external); err != nil || reason != "" {
 				d.w.printf(noteBlocked, path, firstOf(reason, err))
 				continue
 			}
@@ -116,8 +116,8 @@ func (d *doctor) exportTargets(t adapter.Target, tools []string, local []*candid
 	return targets, nil
 }
 
-func blockedReason(units []plan.Unit, m manifest.Manifest, tools []string) (string, error) {
-	changes, err := plan.Diff(units, m, tools, plan.Options{})
+func blockedReason(units []plan.Unit, m manifest.Manifest, tools, external []string) (string, error) {
+	changes, err := plan.Diff(units, m, tools, plan.Options{External: external})
 	if err != nil {
 		return "", err
 	}

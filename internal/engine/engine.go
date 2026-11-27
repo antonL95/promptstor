@@ -174,6 +174,7 @@ func (e Engine) plan(projectRoot string, opt plan.Options) (Plan, manifest.Manif
 	opt.Adopt = append(slices.Clone(opt.Adopt), e.Config.Adopted...)
 	opt.ReplaceSymlinks = append(slices.Clone(opt.ReplaceSymlinks), e.Config.ReplaceSymlinks...)
 	opt.SharedState = append(slices.Clone(opt.SharedState), d.sharedState...)
+	opt.External = append(slices.Clone(opt.External), e.Config.External...)
 	changes, err := plan.Diff(d.units, m, d.tools(), opt)
 	if err != nil {
 		return Plan{}, m, err
