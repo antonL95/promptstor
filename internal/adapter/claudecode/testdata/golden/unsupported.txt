@@ -1,0 +1,7 @@
+ps_agent: use a skill
+ps_hook: no claude-code native entry
+ps_hook_http: Claude Code hooks are keyed by the command of their first handler, and this hook has none
+ps_sub: Claude Code skips a subagent without a description
+ps_ws: transport "ws" is not supported by Claude Code
+ps_keychain: secret env/API_KEY needs setup before Claude Code can use it
+ps_native: claude-code native permission key defaultMode is not allow, deny or ask

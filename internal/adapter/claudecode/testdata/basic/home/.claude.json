@@ -1,0 +1,28 @@
+{
+  "numStartups": 3,
+  "oauthAccount": {
+    "accountUuid": "00000000-0000-0000-0000-000000000000",
+    "emailAddress": "person@example.com"
+  },
+  "userID": "fixture-user-id",
+  "mcpServers": {
+    "docs": {
+      "type": "stdio",
+      "command": "example-docs",
+      "args": ["--token", "fixture-token-value"],
+      "env": {"DOCS_TOKEN": "${DOCS_TOKEN}", "MODE": "readonly"}
+    },
+    "remote": {
+      "type": "http",
+      "url": "https://mcp.example.com/mcp",
+      "headers": {"Authorization": "Bearer fixture-bearer-value"},
+      "headersHelper": "example-helper"
+    }
+  },
+  "projects": {
+    "/work/example-app": {
+      "allowedTools": [],
+      "mcpServers": {"local-db": {"type": "stdio", "command": "example-db"}}
+    }
+  }
+}

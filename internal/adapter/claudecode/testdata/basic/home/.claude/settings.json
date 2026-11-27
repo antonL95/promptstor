@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "EXAMPLE_API_KEY": "fixture-secret-value"
+  },
+  "permissions": {
+    "allow": ["Bash(make test *)", "mcp__docs"],
+    "deny": ["Bash(git push --force *)", "Bash(rm:*)", "Read(./.env)", "Edit(./.env)", "Read(//etc/example/**)", "Edit(//etc/example/**)", "WebFetch(domain:example.org)"],
+    "ask": ["Bash(git commit *)"]
+  },
+  "hooks": {
+    "SessionStart": [
+      {"hooks": [{"type": "command", "command": "~/.claude/hooks/start.sh", "timeout": 10, "statusMessage": "Loading"}]}
+    ],
+    "PreToolUse": [
+      {"matcher": "Edit|Write", "hooks": [{"type": "command", "command": "~/.claude/hooks/guard.sh"}]}
+    ]
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "agents": ["claude_code"],
+  "guidelines": true,
+  "skills": ["laravel-pest"]
+}

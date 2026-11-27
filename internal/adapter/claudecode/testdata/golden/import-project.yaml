@@ -1,0 +1,104 @@
+items:
+- kind: rule
+  name: CLAUDE
+  order: 10
+  source: <project>/CLAUDE.md
+  targets:
+  - claude-code
+  body: |
+    # Example app
+- kind: rule
+  name: Claude notes
+  order: 20
+  source: <project>/CLAUDE.md
+  targets:
+  - claude-code
+  body: |
+    ## Claude notes
+
+    Plan before editing.
+- kind: rule
+  name: Build
+  order: 10
+  source: <project>/AGENTS.md
+  body: |
+    ## Build
+
+    Run `make build` before a commit.
+- kind: rule
+  name: API
+  order: 10
+  source: <project>/.claude/rules/api.md
+  targets:
+  - claude-code
+  activation: files
+  scope:
+  - src/api/**/*.ts
+  - tests/api/**
+  body: |
+    ## API
+
+    Validate every input.
+- kind: command
+  name: deploy
+  source: <project>/.claude/commands/deploy.md
+  description: Deploy the preview
+  body: |
+    Deploy $ARGUMENTS.
+- kind: skill
+  name: project-skill
+  source: <project>/.claude/skills/project-skill
+  description: A project skill.
+  body: |
+    Project.
+- kind: permission
+  name: Claude Code permissions
+  source: <project>/.claude/settings.json
+  portable:
+    denycommands:
+    - curl
+    denypaths: []
+    allowmcpservers: []
+- kind: mcp
+  name: search
+  source: <project>/.mcp.json
+  mcp:
+    transport: stdio
+    command: example-search
+    url: ""
+    args:
+    - --api-key=${env:API_KEY}
+    env:
+      SEARCH_TOKEN:
+        literal: ""
+        ref: env:SEARCH_TOKEN
+    headers: {}
+    resolve: false
+foreign:
+- path: <project>/.claude/skills/laravel-pest
+  owner: laravel-boost
+  reason: listed in boost.json; Boost regenerates it
+- path: <project>/.mcp.json
+  owner: laravel-boost
+  reason: mcpServers/laravel-boost; Boost regenerates it
+- path: <project>/CLAUDE.md
+  owner: laravel-boost
+  reason: <laravel-boost-guidelines> block; Boost regenerates it
+grants:
+- tool: claude-code
+  path: <project>/.claude/settings.local.json
+  key: /permissions/allow@=Bash(npm test *)
+  value: Bash(npm test *)
+- tool: claude-code
+  path: <project>/.claude/settings.local.json
+  key: /permissions/allow@=WebFetch(domain:docs.example.com)
+  value: WebFetch(domain:docs.example.com)
+- tool: claude-code
+  path: <project>/.claude/settings.local.json
+  key: /permissions/deny@=Read(./tmp/**)
+  value: Read(./tmp/**)
+notes:
+- path: <project>/.mcp.json
+  message: 'server search: secret scrubbed, set API_KEY'
+- path: <project>/.mcp.json
+  message: 'server typeless: url without type, which Claude Code rejects; not imported'
