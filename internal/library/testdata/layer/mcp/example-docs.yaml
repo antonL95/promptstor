@@ -1,0 +1,13 @@
+promptstor:
+  id: ps_00000000000000000000000008
+description: Synthetic documentation server
+transport: stdio
+command: example-server
+args:
+  - --port
+  - "8080"
+env:
+  EXAMPLE_MODE: readonly
+  EXAMPLE_TOKEN:
+    ref: env:EXAMPLE_TOKEN
+resolve: true

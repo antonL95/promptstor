@@ -1,0 +1,11 @@
+promptstor:
+  id: ps_00000000000000000000000007
+  targets:
+    include:
+      - claude
+name: Format check
+native:
+  claude:
+    event: PostToolUse
+    matcher: Edit|Write
+    timeout: 30
