@@ -175,6 +175,7 @@ func TestFirstRunSnapshotContainsAllEntries(t *testing.T) {
 		".claude/skills/linked-skill":           backup.KindSymlink,
 		".claude/skills/token-counter":          backup.KindDir,
 		".claude/skills/token-counter/SKILL.md": backup.KindFile,
+		".claude/agents":                        backup.KindAbsent,
 		".claude/agents/reviewer.md":            backup.KindAbsent,
 		".codex/config.toml":                    backup.KindFile,
 	}
@@ -385,7 +386,10 @@ func TestAbsentFileDeletedOnRestore(t *testing.T) {
 	if !exists(t, at(env, ".claude/CLAUDE.md")) {
 		t.Error("link target deleted")
 	}
-	if ops := opsOf(restored); !slices.Equal(ops, []string{"delete", "delete"}) {
+	if exists(t, at(env, ".claude/agents")) {
+		t.Error(".claude/agents still exists")
+	}
+	if ops := opsOf(restored); !slices.Equal(ops, []string{"delete", "delete", "delete"}) {
 		t.Errorf("ops %v", ops)
 	}
 }
@@ -524,6 +528,7 @@ func TestDryRunChangesNothing(t *testing.T) {
 		{Path: at(env, ".claude/skills/demo-skill/extra.md"), Op: "prune"},
 		{Path: at(env, ".claude/CLAUDE.md"), Op: "write"},
 		{Path: at(env, ".claude/agents/reviewer.md"), Op: "delete"},
+		{Path: at(env, ".claude/agents"), Op: "delete"},
 	}
 	var got []backup.RestoreAction
 	for _, a := range restored.Actions {
@@ -911,5 +916,42 @@ func TestRestoreProjectFileUnderRepoRoot(t *testing.T) {
 	}
 	if exists(t, mcp) || exists(t, filepath.Join(repo, ".claude", "skills", "demo", "extra.md")) {
 		t.Error("added project files not removed")
+	}
+}
+
+func TestDirectoriesCreatedAfterSnapshotRemovedOnRestore(t *testing.T) {
+	env := home(t)
+	s := store(env)
+	before := testenv.TreeHash(t, env.Home)
+	snap := take(t, s, backup.ReasonChange, entry(env, claudeTool, ".claude/fresh/nested/run.sh"))
+	write(t, at(env, ".claude/fresh/nested/run.sh"), "echo run\n")
+
+	restore(t, s, snap.ID, "", false)
+
+	if exists(t, at(env, ".claude/fresh")) {
+		t.Error(".claude/fresh still exists")
+	}
+	if got := testenv.TreeHash(t, env.Home); got != before {
+		t.Error("home differs from the snapshot")
+	}
+}
+
+func TestCreatedDirectoryHoldingNewFilesKeptOnRestore(t *testing.T) {
+	env := home(t)
+	s := store(env)
+	snap := take(t, s, backup.ReasonChange, entry(env, claudeTool, ".claude/fresh/run.sh"))
+	write(t, at(env, ".claude/fresh/run.sh"), "echo run\n")
+	write(t, at(env, ".claude/fresh/notes.md"), "mine\n")
+
+	restored := restore(t, s, snap.ID, "", false)
+
+	if exists(t, at(env, ".claude/fresh/run.sh")) {
+		t.Error("run.sh still exists")
+	}
+	if !exists(t, at(env, ".claude/fresh/notes.md")) {
+		t.Error("notes.md deleted")
+	}
+	if ops := opsOf(restored); !slices.Equal(ops, []string{"delete", "blocked"}) {
+		t.Errorf("ops %v", ops)
 	}
 }

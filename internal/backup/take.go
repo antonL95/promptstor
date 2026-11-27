@@ -1,6 +1,7 @@
 package backup
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -60,6 +61,9 @@ func (t *taker) record(entry plan.SnapshotEntry) error {
 	}
 	switch {
 	case !current.Exists:
+		if err := t.recordMissingParents(entry.Tool, path); err != nil {
+			return err
+		}
 		t.add(SnapFile{Tool: entry.Tool, Path: path, Kind: KindAbsent})
 	case current.IsLink:
 		t.add(SnapFile{Tool: entry.Tool, Path: path, Kind: KindSymlink, LinkTarget: current.LinkTarget})
@@ -69,6 +73,27 @@ func (t *taker) record(entry plan.SnapshotEntry) error {
 		return t.recordFile(entry.Tool, path, current.Mode, entry.RedactKeys)
 	default:
 		t.snap.Skipped = append(t.snap.Skipped, path)
+	}
+	return nil
+}
+
+func (t *taker) recordMissingParents(tool, path string) error {
+	root := filepath.Clean(cmp.Or(t.root, t.store.Env.Home))
+	var missing []string
+	for dir := filepath.Dir(path); dir != root && within(root, dir); dir = filepath.Dir(dir) {
+		current, err := fsx.Inspect(dir)
+		if err != nil {
+			return err
+		}
+		if current.Exists {
+			break
+		}
+		missing = append(missing, dir)
+	}
+	for _, dir := range slices.Backward(missing) {
+		if !slices.ContainsFunc(t.snap.Files, func(f SnapFile) bool { return f.Path == dir }) {
+			t.add(SnapFile{Tool: tool, Path: dir, Kind: KindAbsent})
+		}
 	}
 	return nil
 }

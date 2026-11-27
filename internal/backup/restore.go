@@ -60,7 +60,8 @@ func (s Store) Restore(id, tool string, dryRun bool) (RestorePlan, error) {
 	if err := r.pruneAll(files, snap.Files); err != nil {
 		return r.plan, err
 	}
-	for _, f := range files {
+	present, absent := splitAbsent(files)
+	for _, f := range append(present, absent...) {
 		if err := r.restore(f); err != nil {
 			return r.plan, fmt.Errorf("restore %s: %w", f.Path, err)
 		}
@@ -94,10 +95,23 @@ func filesFor(files []SnapFile, tool string) []SnapFile {
 	return kept
 }
 
+func splitAbsent(files []SnapFile) (present, absent []SnapFile) {
+	for _, f := range files {
+		if f.Kind == KindAbsent && f.Keys == nil {
+			absent = append(absent, f)
+			continue
+		}
+		present = append(present, f)
+	}
+	slices.Reverse(absent)
+	return present, absent
+}
+
 type restorer struct {
-	store  Store
-	dryRun bool
-	plan   RestorePlan
+	store   Store
+	dryRun  bool
+	plan    RestorePlan
+	removed map[string]bool
 }
 
 func (r *restorer) act(path, op, detail string) {
@@ -337,6 +351,7 @@ func (r *restorer) clearable(path string, current fsx.Entry) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("read %s: %w", path, err)
 	}
+	children = slices.DeleteFunc(children, func(child fs.DirEntry) bool { return r.removed[filepath.Join(path, child.Name())] })
 	if len(children) > 0 {
 		r.act(path, OpBlocked, "a directory that is not empty is in the way")
 		return false, nil
@@ -352,6 +367,10 @@ func (r *restorer) clear(path string, current fsx.Entry) error {
 }
 
 func (r *restorer) remove(path string) error {
+	if r.removed == nil {
+		r.removed = map[string]bool{}
+	}
+	r.removed[path] = true
 	if r.dryRun {
 		return nil
 	}
