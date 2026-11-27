@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 
 	"github.com/antonL95/promptstor/internal/adapter"
 	"github.com/antonL95/promptstor/internal/config"
@@ -23,6 +24,10 @@ func (d Deps) engine() (engine.Engine, error) {
 	if err != nil {
 		return engine.Engine{}, err
 	}
+	guards, err := d.editGuards(cfg)
+	if err != nil {
+		return engine.Engine{}, err
+	}
 	return engine.Engine{
 		Env:      d.Env,
 		Config:   cfg,
@@ -30,7 +35,7 @@ func (d Deps) engine() (engine.Engine, error) {
 		Resolver: secrets.OSResolver(d.Env, d.run),
 		Acks:     acks,
 		Now:      d.Now,
-		Builtins: d.Builtins,
+		Builtins: append(slices.Clone(d.Builtins), guards...),
 	}, nil
 }
 

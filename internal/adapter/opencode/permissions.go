@@ -31,9 +31,14 @@ const (
 	reasonAllowList = "opencode has no rule that allows one MCP server without also matching others"
 	reasonNative    = "opencode native permission entries are not supported"
 	reasonNothing   = "nothing in this permission applies to opencode"
+	noteGuardFiles  = "files where PromptStor owns only a managed section stay editable in opencode, since the rest of the file is yours"
 )
 
 func (ex *exporter) permission(it library.Item) {
+	if library.IsEditGuard(it) {
+		ex.editGuard(it)
+		return
+	}
 	_, native := it.Native[tool]
 	var portable library.PortablePermission
 	if it.Portable != nil {
@@ -161,4 +166,20 @@ func (ex *exporter) deny(it library.Item, action, resource string) {
 		Content: content,
 		Items:   []library.ID{it.ID},
 	})
+}
+
+func (ex *exporter) editGuard(it library.Item) {
+	rules, ok := rulesetOf(it.Native[tool])
+	if !ok {
+		ex.block(it, reasonNative)
+		return
+	}
+	for _, rule := range rules {
+		if rule.Action != editAction || rule.Effect != effectDeny || !filepath.IsAbs(rule.Resource) {
+			ex.block(it, fmt.Sprintf(reasonPath, rule.Resource))
+			continue
+		}
+		ex.deny(it, rule.Action, rule.Resource)
+	}
+	ex.report(it, noteGuardFiles)
 }

@@ -1,0 +1,1 @@
+{"session_id":"session-1","transcript_path":"/work/home/.gemini/tmp/example/chats/session-1.json","cwd":"/work/home","hook_event_name":"BeforeTool","timestamp":"2026-01-01T00:00:00.000Z","tool_name":"replace","tool_input":{"file_path":"/work/home/.gemini/GEMINI.md","old_string":"Use plain language.","new_string":"Use any language."}}

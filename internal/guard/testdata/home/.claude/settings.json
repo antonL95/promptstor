@@ -1,0 +1,13 @@
+{
+  "model": "example-model",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "/opt/example/bin/check-shell" }
+        ]
+      }
+    ]
+  }
+}

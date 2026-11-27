@@ -1,9 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 
 	_ "github.com/antonL95/promptstor/internal/adapter/all"
@@ -24,10 +26,27 @@ func main() {
 		Env:    env,
 		Now:    time.Now,
 		Run:    runCommand,
+		Binary: binaryPath(),
 	})
 	if err := root.Execute(); err != nil {
+		var exit cli.ExitCode
+		if errors.As(err, &exit) {
+			os.Exit(int(exit))
+		}
 		os.Exit(1)
 	}
+}
+
+func binaryPath() string {
+	path, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return ""
+	}
+	return resolved
 }
 
 func runCommand(name string, args ...string) ([]byte, error) {

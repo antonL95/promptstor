@@ -17,6 +17,7 @@ type Deps struct {
 	Now      func() time.Time
 	Run      func(name string, args ...string) ([]byte, error)
 	Builtins []library.Item
+	Binary   string
 }
 
 func NewRoot(d Deps) *cobra.Command {
@@ -28,6 +29,6 @@ func NewRoot(d Deps) *cobra.Command {
 	root.SetIn(d.Stdin)
 	root.SetOut(d.Stdout)
 	root.SetErr(d.Stderr)
-	root.AddCommand(newVersionCommand(), newSyncCommand(d), newRestoreCommand(d), newStatusCommand(d))
+	root.AddCommand(newVersionCommand(), newSyncCommand(d), newRestoreCommand(d), newStatusCommand(d), newHookCommand(d))
 	return root
 }

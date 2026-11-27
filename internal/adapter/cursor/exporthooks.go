@@ -29,6 +29,7 @@ const (
 	reasonHookField   = "hook field %s is not documented for Cursor"
 	reasonHookTaken   = "another hook already uses this command for %s"
 	reasonHookVersion = "hooks.json is not schema version 1; not written"
+	noteGuardCoverage = "the edit guard uses preToolUse with matcher Write; that it sees every agent edit is unverified"
 )
 
 var (
@@ -87,6 +88,9 @@ func (ex *exporter) hook(it library.Item, set *hookSet) {
 	set.taken[key] = true
 	set.items = append(set.items, it.ID)
 	ex.add(plan.Unit{Path: ex.l.in(hooksName), Kind: manifest.UnitJSONElement, Key: key, Content: content, Items: []library.ID{it.ID}})
+	if library.IsEditGuard(it) {
+		ex.report(it, noteGuardCoverage)
+	}
 }
 
 func checkHook(event string, body map[string]any) (command, reason string) {

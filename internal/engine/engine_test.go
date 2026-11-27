@@ -884,3 +884,20 @@ func TestDryRunRestoreLeavesManifest(t *testing.T) {
 		t.Error("dry run changed the state directory")
 	}
 }
+
+func TestEditGuardsInstallAtUserScopeOnly(t *testing.T) {
+	env := home(t)
+	e := newEngine(env, adapter.ClaudeCode)
+	e.Builtins = []library.Item{library.EditGuard(adapter.ClaudeCode, "/opt/promptstor/bin/promptstor")}
+	project := t.TempDir()
+	p := mustPlan(t, e, project)
+	user, found := changeFor(p, at(env, ".claude/settings.json"))
+	if !found || !bytes.Contains(user.After, []byte("promptstor hook claude-code")) {
+		t.Fatalf("user settings change %+v, want the guard hook", user)
+	}
+	for _, c := range p.Changes {
+		if strings.HasPrefix(c.Path, project) && bytes.Contains(c.After, []byte("promptstor hook")) {
+			t.Errorf("project file %s gets the edit guard", c.Path)
+		}
+	}
+}

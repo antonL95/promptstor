@@ -27,6 +27,7 @@ const (
 	reasonHookPresent  = "hooks.json already has this hook as %q; remove it there to let PromptStor manage it"
 	reasonHookNoName   = "the name has no characters usable in a hook name"
 	reasonNoHookTarget = "the antigravity hook has no event"
+	noteGuardCoverage  = "the edit guard matches write_file and edit_file and reads file_path or path from the tool arguments; Antigravity does not document its edit tool names or arguments, so its coverage is unverified"
 )
 
 var (
@@ -63,6 +64,9 @@ func (ex *exporter) hook(it library.Item, existing map[string]json.RawMessage) {
 		return
 	}
 	ex.add(plan.Unit{Path: ex.l.in(hooksName), Kind: manifest.UnitJSON, Key: "/" + hookPrefix + slug, Content: content, Items: []library.ID{it.ID}})
+	if library.IsEditGuard(it) {
+		ex.report(it, noteGuardCoverage)
+	}
 }
 
 func checkHook(definition map[string]any) string {

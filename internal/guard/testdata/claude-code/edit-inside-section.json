@@ -1,0 +1,1 @@
+{"session_id":"session-1","transcript_path":"/work/home/.claude/projects/example/session-1.jsonl","cwd":"/work/home","permission_mode":"default","hook_event_name":"PreToolUse","tool_name":"Edit","tool_input":{"file_path":"/work/home/.claude/CLAUDE.md","old_string":"Use plain language.","new_string":"Use any language.","replace_all":false},"tool_use_id":"toolu_01"}

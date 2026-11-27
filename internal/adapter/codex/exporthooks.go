@@ -19,6 +19,7 @@ const (
 	reasonNoNative      = "no codex native entry"
 	reasonHookEvent     = "the codex hook has no event that Codex knows"
 	reasonNoHookCommand = "Codex hooks are keyed by the command of their first handler, and this hook has none"
+	noteGuardTrust      = "Codex runs the edit guard only after you trust it in /hooks"
 )
 
 var hookEvents = []string{
@@ -56,6 +57,9 @@ func (ex *exporter) hook(it library.Item) {
 		return
 	}
 	ex.add(plan.Unit{Path: ex.l.in(hooksName), Kind: manifest.UnitJSONElement, Key: key, Content: content, Items: []library.ID{it.ID}})
+	if library.IsEditGuard(it) {
+		ex.report(it, noteGuardTrust)
+	}
 }
 
 func firstCommand(group map[string]any) (string, bool) {

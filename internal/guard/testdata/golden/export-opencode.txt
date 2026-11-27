@@ -1,0 +1,5 @@
+~/.config/opencode/opencode.jsonc json-element /permissions@#<hash>
+{"action":"edit","resource":"~/.claude/skills/review/SKILL.md","effect":"deny"}
+~/.config/opencode/opencode.jsonc json-element /permissions@#<hash>
+{"action":"edit","resource":"~/.config/opencode/commands/ship.md","effect":"deny"}
+note (ps_builtin_guard_opencode, blocking false): files where PromptStor owns only a managed section stay editable in opencode, since the rest of the file is yours
