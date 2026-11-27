@@ -7,25 +7,25 @@ const (
 	maxFenceIndent = 3
 )
 
-type fence struct {
+type Fence struct {
 	marker byte
 	length int
 }
 
-func (f fence) isOpen() bool { return f.length > 0 }
+func (f Fence) IsOpen() bool { return f.length > 0 }
 
-func (f fence) after(line string) fence {
+func (f Fence) After(line string) Fence {
 	marker, length, info, ok := fenceLine(line)
 	switch {
 	case !ok:
 		return f
-	case !f.isOpen():
+	case !f.IsOpen():
 		if marker == '`' && strings.ContainsRune(info, '`') {
 			return f
 		}
-		return fence{marker: marker, length: length}
+		return Fence{marker: marker, length: length}
 	case marker == f.marker && length >= f.length && strings.TrimSpace(info) == "":
-		return fence{}
+		return Fence{}
 	default:
 		return f
 	}

@@ -40,15 +40,15 @@ func Split(doc []byte, source string) []library.Item {
 func sections(doc []byte, preamble string) []section {
 	text := strings.ReplaceAll(strings.TrimPrefix(string(doc), byteOrderMark), "\r\n", "\n")
 	found := []section{{name: preamble}}
-	var open fence
+	var open Fence
 	for _, line := range strings.Split(text, "\n") {
 		if isManagedLine(line) {
 			continue
 		}
-		if name, ok := heading(line); ok && !open.isOpen() {
+		if name, ok := heading(line); ok && !open.IsOpen() {
 			found = append(found, section{name: name})
 		}
-		open = open.after(line)
+		open = open.After(line)
 		last := &found[len(found)-1]
 		last.lines = append(last.lines, line)
 	}
