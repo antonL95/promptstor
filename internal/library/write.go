@@ -187,6 +187,7 @@ func ContentHash(it Item) string {
 		return ""
 	}
 	hash := sha256.New()
+	hash.Write(fmt.Appendf(nil, "%q %q\n", it.Kind, it.Name))
 	hash.Write(fmt.Appendf(nil, "%d\n%s", len(data), data))
 	for _, key := range slices.Sorted(maps.Keys(it.Files)) {
 		file := it.Files[key]

@@ -726,3 +726,17 @@ func TestDotfilesInSkillFolderIgnored(t *testing.T) {
 		}
 	}
 }
+
+func TestContentHashChangesOnRenameAndKind(t *testing.T) {
+	original := Item{ID: "ps_00000000000000000000000001", Kind: KindRule, Name: "one", Body: "body\n"}
+	renamed, command := original, original
+	renamed.Name = "two"
+	command.Kind = KindCommand
+
+	if ContentHash(renamed) == ContentHash(original) {
+		t.Error("renaming a rule keeps the hash")
+	}
+	if ContentHash(command) == ContentHash(original) {
+		t.Error("a rule and a command with the same ID, name and body share a hash")
+	}
+}
