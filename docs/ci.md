@@ -35,6 +35,12 @@ A secret in an MCP server must be an environment reference such as `ref: env:EXA
 literal secret in example-docs (env/EXAMPLE_TOKEN); use an env placeholder
 ```
 
+Hooks follow the same rule. A hook command that holds a literal token (a `Bearer` value, a secret header, a secret flag value, a password in a URL or a secret query parameter) fails the check. Read the value from a variable instead, for example `Authorization: Bearer $NOTIFY_TOKEN`. The line names the hook and never the value:
+
+```
+literal secret in Notify (hook); use an env placeholder
+```
+
 ## The command
 
 ```sh
@@ -45,7 +51,7 @@ promptstor check --ci --dir path/to/repository
 | Exit code | Meaning |
 |-----------|---------|
 | 0 | Every generated unit matches the committed files |
-| 1 | A unit is missing or differs, a file cannot be compared, an MCP server holds a literal secret, or a tool reports a blocking limitation that is not acknowledged |
+| 1 | A unit is missing or differs, a file cannot be compared, an MCP server or a hook holds a literal secret, or a tool reports a blocking limitation that is not acknowledged |
 | 2 | The check could not run, for example because `.promptstor/config.yaml` is missing or names an unknown tool, or `.promptstor/acks.json` is not valid |
 
 For each difference the command prints a unified diff from the committed content to the generated content. For JSON and TOML entries it prints only the generated entry, because the committed one might hold a secret.
