@@ -561,6 +561,64 @@ func TestRemoveProjectItemCreatesBranch(t *testing.T) {
 	}
 }
 
+func TestRemoveProjectCommandDeletesGeneratedFile(t *testing.T) {
+	env := home(t)
+	repo := newRepo(t)
+	var calls [][]string
+	cs := connect(t, newEngine(env), gitRunner(t, &calls, nil))
+	var added changeResult
+	mustCall(t, cs, "promptstor_upsert", map[string]any{
+		"layer":       "project",
+		"project_dir": repo,
+		"item":        map[string]any{"kind": "command", "name": "ship-it", "description": "Ship the branch", "body": "Run the release checks.\n"},
+	}, &added)
+	if files := strings.Fields(git(t, repo, "ls-tree", "-r", "--name-only", added.Branch)); !slices.Contains(files, ".claude/commands/ship-it.md") {
+		t.Fatalf("upsert did not generate the command: %v", files)
+	}
+	git(t, repo, "merge", "-q", "--ff-only", added.Branch)
+
+	var removed changeResult
+	mustCall(t, cs, "promptstor_remove", map[string]any{"layer": "project", "project_dir": repo, "id": string(added.ID)}, &removed)
+
+	files := strings.Fields(git(t, repo, "ls-tree", "-r", "--name-only", removed.Branch))
+	for _, gone := range []string{".promptstor/commands/ship-it.md", ".claude/commands/ship-it.md"} {
+		if slices.Contains(files, gone) {
+			t.Errorf("branch still holds %s: %v", gone, files)
+		}
+	}
+}
+
+func TestRemoveProjectMCPServerDeletesGeneratedKey(t *testing.T) {
+	env := home(t)
+	repo := newRepo(t)
+	const id = "ps_0000000000000000000000PMC1"
+	server := filepath.Join(repo, ".promptstor", "mcp", "example-search.yaml")
+	if err := os.MkdirAll(filepath.Dir(server), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(server, []byte("promptstor:\n  id: "+id+"\ndescription: Synthetic search server\ntransport: stdio\ncommand: example-search-server\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	e := newEngine(env)
+	if _, _, err := e.Sync(repo, plan.Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(readFile(t, filepath.Join(repo, ".mcp.json")), "example-search") {
+		t.Fatalf("project sync did not generate the server:\n%s", readFile(t, filepath.Join(repo, ".mcp.json")))
+	}
+	git(t, repo, "add", "-A")
+	git(t, repo, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-q", "-m", "add server")
+	var calls [][]string
+	cs := connect(t, e, gitRunner(t, &calls, nil))
+
+	var removed changeResult
+	mustCall(t, cs, "promptstor_remove", map[string]any{"layer": "project", "project_dir": repo, "id": id}, &removed)
+
+	if content := git(t, repo, "show", removed.Branch+":.mcp.json"); strings.Contains(content, "example-search") {
+		t.Errorf("branch .mcp.json still holds the server:\n%s", content)
+	}
+}
+
 func TestProjectBranchMatchesLocalProjectSync(t *testing.T) {
 	env := home(t)
 	repo := newRepo(t)

@@ -13,6 +13,7 @@ import (
 	"github.com/antonL95/promptstor/internal/backup"
 	"github.com/antonL95/promptstor/internal/engine"
 	"github.com/antonL95/promptstor/internal/library"
+	"github.com/antonL95/promptstor/internal/manifest"
 	"github.com/antonL95/promptstor/internal/plan"
 )
 
@@ -134,11 +135,19 @@ func (s *server) commitChange(worktree, branch string, c projectChange) (changeV
 	if stored, found := assigned.Renamed[c.id]; found {
 		c.id = stored
 	}
+	scratch, cleanup, err := s.scratchEngine()
+	if err != nil {
+		return changeView{}, err
+	}
+	defer cleanup()
+	if err := seedManifest(scratch, worktree); err != nil {
+		return changeView{}, err
+	}
 	path, err := c.apply(layerDir, c.id)
 	if err != nil {
 		return changeView{}, err
 	}
-	p, err := s.regenerate(worktree)
+	p, err := regenerate(scratch, worktree)
 	if err != nil {
 		return changeView{}, err
 	}
@@ -161,21 +170,22 @@ func (s *server) commitChange(worktree, branch string, c projectChange) (changeV
 	return view, nil
 }
 
-func (s *server) regenerate(worktree string) (engine.Plan, error) {
+func (s *server) scratchEngine() (engine.Engine, func(), error) {
 	if err := os.MkdirAll(s.e.Env.StateDir(), 0o700); err != nil {
-		return engine.Plan{}, fmt.Errorf("create %s: %w", s.e.Env.StateDir(), err)
+		return engine.Engine{}, nil, fmt.Errorf("create %s: %w", s.e.Env.StateDir(), err)
 	}
 	scratch, err := os.MkdirTemp(s.e.Env.StateDir(), "project-")
 	if err != nil {
-		return engine.Plan{}, fmt.Errorf("create a scratch state: %w", err)
+		return engine.Engine{}, nil, fmt.Errorf("create a scratch state: %w", err)
 	}
-	defer func() { _ = os.RemoveAll(scratch) }()
+	cleanup := func() { _ = os.RemoveAll(scratch) }
 	e := s.e
 	e.Env.Home = filepath.Join(scratch, "home")
 	e.Env.ConfigHome = filepath.Join(scratch, "config")
 	e.Env.StateHome = filepath.Join(scratch, "state")
 	if err := os.MkdirAll(e.Env.Home, 0o700); err != nil {
-		return engine.Plan{}, fmt.Errorf("create %s: %w", e.Env.Home, err)
+		cleanup()
+		return engine.Engine{}, nil, fmt.Errorf("create %s: %w", e.Env.Home, err)
 	}
 	e.Store = backup.Store{}
 	e.Resolver = nil
@@ -184,6 +194,24 @@ func (s *server) regenerate(worktree string) (engine.Plan, error) {
 	e.Config.ResolveSecrets = nil
 	e.Config.Adopted = nil
 	e.Config.ReplaceSymlinks = nil
+	return e, cleanup, nil
+}
+
+func seedManifest(e engine.Engine, worktree string) error {
+	if _, _, err := e.Sync(worktree, plan.Options{}); err != nil {
+		return fmt.Errorf("read the generated project files: %w", err)
+	}
+	m, err := manifest.Load(e.Env.ManifestPath())
+	if err != nil {
+		return err
+	}
+	for i := range m.Entries {
+		m.Entries[i].Adopted = false
+	}
+	return m.Save(e.Env.ManifestPath())
+}
+
+func regenerate(e engine.Engine, worktree string) (engine.Plan, error) {
 	_, p, err := e.Sync(worktree, plan.Options{})
 	if err != nil {
 		return engine.Plan{}, fmt.Errorf("regenerate the project files: %w", err)
