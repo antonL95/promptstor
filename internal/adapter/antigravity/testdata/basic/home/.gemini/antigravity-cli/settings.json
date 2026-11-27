@@ -1,0 +1,17 @@
+{
+  "colorScheme": "dark",
+  "model": "example-model",
+  "permissions": {
+    "allow": ["command(git status)", "mcp(docs/*)"],
+    "deny": [
+      "command(git push --force)",
+      "command(regex:curl .*)",
+      "read_file(/etc/example)",
+      "write_file(/etc/example)",
+      "write_file(.git/)",
+      "read_url(example.com)"
+    ],
+    "ask": ["command(*)"]
+  },
+  "trustedWorkspaces": ["/work/example"]
+}

@@ -1,0 +1,13 @@
+{
+  "session-note": {
+    "SessionStart": [
+      { "type": "command", "command": "/opt/example/hooks/note.sh", "timeout": 10 }
+    ]
+  },
+  "promptstor-guard-writes": {
+    "enabled": false,
+    "PreToolUse": [
+      { "matcher": "write_to_file", "hooks": [{ "command": "/opt/example/hooks/guard.sh" }] }
+    ]
+  }
+}

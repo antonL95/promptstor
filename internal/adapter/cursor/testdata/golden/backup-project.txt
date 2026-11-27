@@ -1,0 +1,7 @@
+<project>/.agents/skills root=<project> keys=[] redact=[]
+<project>/.cursor/agents root=<project> keys=[] redact=[]
+<project>/.cursor/cli.json root=<project> keys=[] redact=[]
+<project>/.cursor/commands root=<project> keys=[] redact=[]
+<project>/.cursor/hooks.json root=<project> keys=[] redact=[]
+<project>/.cursor/mcp.json root=<project> keys=[] redact=[]
+<project>/.cursor/rules root=<project> keys=[] redact=[]

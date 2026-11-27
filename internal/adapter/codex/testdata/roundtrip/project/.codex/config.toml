@@ -1,0 +1,3 @@
+[mcp_servers.project-db]
+command = "example-db"
+env_vars = ["DB_URL"]

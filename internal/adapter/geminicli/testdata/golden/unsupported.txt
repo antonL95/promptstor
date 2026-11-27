@@ -1,0 +1,16 @@
+ps_agent: Gemini CLI has no scoped rules
+ps_skill: skill "../escape": the name is not a single folder name
+ps_cred: skill file scripts/token.json matches the credential exclusion list
+ps_cmd: the command has no prompt
+ps_cmdname: the name has no characters usable in a file name
+ps_cmdtoken: token.toml matches the credential exclusion list
+ps_sub: Gemini CLI does not load a subagent without a description
+ps_native: Gemini CLI native permission entries are not supported
+ps_foreign: nothing in this permission applies to Gemini CLI
+ps_hook: no gemini-cli native entry
+ps_event: the gemini-cli hook has no event that Gemini CLI knows
+ps_nocommand: Gemini CLI hooks are keyed by the command of their first handler, and this hook has none
+ps_nomcp: the item has no server definition
+ps_ws: transport "ws" is not supported by Gemini CLI
+ps_keychain: secret env/API_KEY needs setup before Gemini CLI can use it
+ps_both: an http server needs a url and no command, args or env

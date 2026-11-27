@@ -1,0 +1,3 @@
+## Style notes
+
+Short names.

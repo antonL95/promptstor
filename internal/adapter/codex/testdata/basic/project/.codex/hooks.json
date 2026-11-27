@@ -1,0 +1,7 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "apply_patch|Bash", "hooks": [{ "type": "command", "command": "/opt/example/hooks/check.sh" }] }
+    ]
+  }
+}

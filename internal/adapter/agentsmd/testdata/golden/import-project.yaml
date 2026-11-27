@@ -1,0 +1,24 @@
+- kind: rule
+  name: AGENTS
+  order: 10
+  source: <project>/AGENTS.md
+  body: |
+    # Example app
+
+    Shared rules for every agent.
+- kind: rule
+  name: Build
+  order: 20
+  source: <project>/AGENTS.md
+  body: |
+    ## Build
+
+    Run `make build` before a commit.
+- kind: rule
+  name: Style
+  order: 30
+  source: <project>/AGENTS.md
+  body: |
+    ## Style
+
+    Use tabs.

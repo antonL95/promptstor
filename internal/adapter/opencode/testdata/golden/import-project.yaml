@@ -1,0 +1,53 @@
+items:
+- kind: rule
+  name: Testing
+  order: 10
+  source: <project>/AGENTS.md
+  body: |
+    ## Testing
+
+    Run the tests before committing.
+- kind: subagent
+  name: docs-writer
+  source: <project>/.opencode/agents/docs-writer.md
+  description: Writes docs
+  body: |
+    Write the docs.
+- kind: command
+  name: ship
+  source: <project>/.opencode/commands/ship.md
+  description: Ship the release
+  body: |
+    Ship it.
+- kind: skill
+  name: project-skill
+  source: <project>/.agents/skills/project-skill
+  description: Project skill
+  body: |
+    Do the project thing.
+- kind: mcp
+  name: lint
+  source: <project>/.opencode/opencode.jsonc
+  mcp:
+    transport: stdio
+    command: example-lint
+    url: ""
+    args:
+    - --strict
+    env: {}
+    headers: {}
+    resolve: false
+- kind: mcp
+  name: search
+  source: <project>/opencode.json
+  mcp:
+    transport: http
+    command: ""
+    url: https://search.example.com/mcp
+    args: []
+    env: {}
+    headers:
+      Authorization:
+        literal: Bearer ${env:SEARCH_TOKEN}
+        ref: ""
+    resolve: false

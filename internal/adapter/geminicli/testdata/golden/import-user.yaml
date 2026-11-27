@@ -1,0 +1,200 @@
+items:
+- kind: rule
+  name: GEMINI
+  order: 10
+  source: <home>/.gemini/GEMINI.md
+  body: |
+    Personal defaults.
+- kind: rule
+  name: Reviews
+  order: 20
+  source: <home>/.gemini/GEMINI.md
+  body: |
+    ## Reviews
+
+    Be critical.
+- kind: rule
+  name: Managed
+  order: 30
+  source: <home>/.gemini/GEMINI.md
+  body: |
+    ## Managed
+
+    Kept in the section.
+- kind: rule
+  name: Testing
+  order: 10
+  source: <home>/.gemini/y.md
+  body: |
+    ## Testing
+
+    Run the tests.
+- kind: command
+  name: git:commit
+  source: <home>/.gemini/commands/git/commit.toml
+  body: Write a commit message.
+- kind: command
+  name: review
+  source: <home>/.gemini/commands/review.toml
+  description: Review the staged diff
+  body: |
+    Review this diff:
+    !{git diff --staged}
+    Focus: {{args}}
+- kind: subagent
+  name: reviewer
+  source: <home>/.gemini/agents/reviewer.md
+  description: Reviews diffs for bugs.
+  meta:
+    gemini_max_turns: 10
+    gemini_model: example-model
+    gemini_tools:
+    - read_file
+    - grep_search
+  body: |
+    You review code.
+- kind: skill
+  name: release-notes
+  source: <home>/.agents/skills/release-notes
+  description: Draft release notes.
+  files:
+  - scripts/run.sh 0755
+  body: |
+    Summarise the changes.
+- kind: skill
+  name: old-skill
+  source: <home>/.gemini/skills/old-skill
+  description: Only in the Gemini folder.
+  body: |
+    Do the old thing.
+- kind: hook
+  name: BeforeTool write_file|replace
+  source: <home>/.gemini/settings.json
+  native:
+    gemini-cli:
+      event: BeforeTool
+      hooks:
+      - command: /opt/example/hooks/guard.sh
+        timeout: 30000
+        type: command
+      matcher: write_file|replace
+- kind: mcp
+  name: docs
+  source: <home>/.gemini/settings.json
+  mcp:
+    transport: stdio
+    command: example-docs
+    url: ""
+    args:
+    - --token
+    - ${env:TOKEN}
+    env:
+      API_KEY:
+        literal: ""
+        ref: needs-setup:API_KEY
+      DOCS_TOKEN:
+        literal: ""
+        ref: env:DOCS_TOKEN
+    headers: {}
+    resolve: false
+- kind: mcp
+  name: events
+  source: <home>/.gemini/settings.json
+  mcp:
+    transport: sse
+    command: ""
+    url: https://mcp.example.com/events
+    args: []
+    env: {}
+    headers: {}
+    resolve: false
+- kind: mcp
+  name: legacy
+  source: <home>/.gemini/settings.json
+  mcp:
+    transport: http
+    command: ""
+    url: https://mcp.example.com/mcp
+    args: []
+    env: {}
+    headers:
+      Authorization:
+        literal: ""
+        ref: needs-setup:Authorization
+    resolve: false
+- kind: mcp
+  name: plain
+  source: <home>/.gemini/settings.json
+  mcp:
+    transport: http
+    command: ""
+    url: https://mcp.example.com/plain
+    args: []
+    env: {}
+    headers: {}
+    resolve: false
+foreign:
+- path: <home>/.gemini/antigravity
+  owner: antigravity
+  reason: belongs to Antigravity, not Gemini CLI
+- path: <home>/.gemini/antigravity-cli
+  owner: antigravity
+  reason: belongs to Antigravity, not Gemini CLI
+- path: <home>/.gemini/config
+  owner: antigravity
+  reason: belongs to Antigravity, not Gemini CLI
+- path: <home>/.gemini/extensions
+  owner: gemini-cli extensions
+  reason: installed extensions; Gemini CLI manages them
+- path: <home>/.gemini/tmp
+  owner: gemini-cli runtime
+  reason: runtime state; Gemini CLI rewrites it
+grants:
+- tool: gemini-cli
+  path: <home>/.gemini/settings.json
+  key: /mcp/allowed@=docs
+  value: docs
+- tool: gemini-cli
+  path: <home>/.gemini/settings.json
+  key: /tools/allowed@=run_shell_command(make test)
+  value: run_shell_command(make test)
+notes:
+- path: <home>/.gemini/agents/distant.md
+  message: remote agent; not imported
+- path: <home>/.gemini/agents/reviewer.md
+  message: field mcp_servers not imported
+- path: <home>/.gemini/commands/broken.toml
+  message: invalid TOML; not imported
+- path: <home>/.gemini/commands/git/commit.toml
+  message: field model not imported
+- path: <home>/.gemini/policies/auto-saved.toml
+  message: written by Gemini CLI; not read
+- path: <home>/.gemini/policies/team.toml
+  message: policy file PromptStor does not manage; not imported
+- path: <home>/.gemini/settings.json
+  message: tools.exclude is deprecated; not imported
+- path: <home>/.gemini/settings.json
+  message: 'server docs: field timeout not imported'
+- path: <home>/.gemini/settings.json
+  message: 'server docs: field trust not imported'
+- path: <home>/.gemini/settings.json
+  message: 'server docs: secret scrubbed, env/API_KEY'
+- path: <home>/.gemini/settings.json
+  message: 'server docs: secret scrubbed, set TOKEN'
+- path: <home>/.gemini/settings.json
+  message: 'server legacy: secret scrubbed, headers/Authorization'
+- path: <home>/.gemini/skills/release-notes
+  message: shadowed by .agents/skills; not imported
+unresolved:
+- file: <home>/.gemini/GEMINI.md
+  line: "3"
+  target: '[style](~/notes/style.md)'
+  reason: syntax
+- file: <home>/.gemini/GEMINI.md
+  line: "4"
+  target: '[x](~/x.md)'
+  reason: syntax
+- file: <home>/.gemini/GEMINI.md
+  line: "5"
+  target: ~/tilde.md
+  reason: tilde

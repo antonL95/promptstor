@@ -1,0 +1,7 @@
+model = "example-model"
+
+[projects."/home/user/app"]
+trust_level = "trusted"
+
+[mcp_servers.docs]
+command = "docs-server"

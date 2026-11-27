@@ -1,0 +1,13 @@
+{
+  "context": {
+    "fileName": ["AGENTS.md", "GEMINI.md"]
+  },
+  "mcpServers": {
+    "example-docs": {
+      "command": "example-docs-server",
+      "env": {
+        "EXAMPLE_TOKEN": "${EXAMPLE_TOKEN}"
+      }
+    }
+  }
+}

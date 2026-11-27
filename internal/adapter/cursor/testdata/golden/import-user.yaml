@@ -1,0 +1,137 @@
+items:
+- kind: command
+  name: git-commit
+  source: <home>/.cursor/commands/git-commit.md
+  description: Commit staged work
+  body: |
+    Commit the staged changes.
+- kind: command
+  name: triage
+  source: <home>/.cursor/commands/triage.md
+  body: |
+    Triage the newest issue.
+- kind: subagent
+  name: reviewer
+  source: <home>/.cursor/agents/reviewer.md
+  description: Reviews diffs.
+  meta:
+    cursor_is_background: false
+    cursor_model: inherit
+    cursor_readonly: true
+  body: |
+    Review the diff.
+- kind: skill
+  name: release-notes
+  source: <home>/.agents/skills/release-notes
+  description: Draft release notes.
+  files:
+  - scripts/run.sh 0755
+  body: |
+    Summarise the changes.
+- kind: skill
+  name: cursor-only
+  source: <home>/.cursor/skills/cursor-only
+  description: Lives in the Cursor skill folder.
+  body: |
+    Do the Cursor thing.
+- kind: permission
+  name: Cursor permissions
+  source: <home>/.cursor/cli-config.json
+  portable:
+    denycommands:
+    - sudo
+    denypaths:
+    - secrets/**
+    allowmcpservers: []
+- kind: hook
+  name: beforeShellExecution curl|wget
+  source: <home>/.cursor/hooks.json
+  native:
+    cursor:
+      command: ./hooks/audit.sh
+      event: beforeShellExecution
+      matcher: curl|wget
+      timeout: 30
+- kind: mcp
+  name: docs
+  source: <home>/.cursor/mcp.json
+  mcp:
+    transport: http
+    command: ""
+    url: https://mcp.example.com/mcp
+    args: []
+    env: {}
+    headers:
+      Authorization:
+        literal: ""
+        ref: needs-setup:Authorization
+      X-Team:
+        literal: ""
+        ref: env:TEAM
+    resolve: false
+- kind: mcp
+  name: signed
+  source: <home>/.cursor/mcp.json
+  mcp:
+    transport: http
+    command: ""
+    url: https://signed.example.com/mcp
+    args: []
+    env: {}
+    headers: {}
+    resolve: false
+- kind: mcp
+  name: tracker
+  source: <home>/.cursor/mcp.json
+  mcp:
+    transport: stdio
+    command: example-tracker
+    url: ""
+    args:
+    - --verbose
+    - --region=${env:TRACKER_REGION}
+    env:
+      MODE:
+        literal: readonly
+        ref: ""
+      TRACKER_TOKEN:
+        literal: ""
+        ref: needs-setup:TRACKER_TOKEN
+    headers: {}
+    resolve: false
+grants:
+- tool: cursor
+  path: <home>/.cursor/cli-config.json
+  key: /permissions/allow@=Shell(git)
+  value: Shell(git)
+- tool: cursor
+  path: <home>/.cursor/cli-config.json
+  key: /permissions/allow@=Read(src/**)
+  value: Read(src/**)
+notes:
+- path: <home>/.cursor/agents/reviewer.md
+  message: field tools not imported
+- path: <home>/.cursor/cli-config.json
+  message: permissions.deny entry "Shell(curl:*)" is not portable; not imported
+- path: <home>/.cursor/cli-config.json
+  message: permissions.deny entry "Write(dist/**)" is not portable; not imported
+- path: <home>/.cursor/cli-config.json
+  message: permissions.deny entry "WebFetch(example.com)" is not portable; not imported
+- path: <home>/.cursor/commands/git-commit.md
+  message: field model not imported
+- path: <home>/.cursor/hooks.json
+  message: 'hook in stop: PromptStor writes command hooks only; not imported'
+- path: <home>/.cursor/mcp.json
+  message: 'server docs: secret scrubbed, headers/Authorization'
+- path: <home>/.cursor/mcp.json
+  message: 'server local: uses ${workspaceFolder}, which PromptStor cannot carry; not imported'
+- path: <home>/.cursor/mcp.json
+  message: 'server signed: field auth not imported'
+- path: <home>/.cursor/mcp.json
+  message: 'server tracker: field envFile not imported'
+- path: <home>/.cursor/mcp.json
+  message: 'server tracker: secret scrubbed, env/TRACKER_TOKEN'
+- path: <home>/.cursor/permissions.json
+  message: editor allow lists; not imported
+- path: <home>/.cursor/rules
+  message: only self hosted Cursor workers are documented to load these; not imported

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "copied": {
+      "command": "example-copied",
+      "env": { "COPIED_TOKEN": "fixture-plugin-secret" }
+    }
+  }
+}

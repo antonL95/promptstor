@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "laravel-boost": {"command": "php", "args": ["artisan", "boost:mcp"]},
+    "search": {"command": "example-search", "args": ["--api-key=fixture-api-key"], "env": {"SEARCH_TOKEN": "${SEARCH_TOKEN:-}"}},
+    "typeless": {"url": "https://typeless.example.com/mcp"}
+  }
+}

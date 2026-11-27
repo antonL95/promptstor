@@ -1,0 +1,5 @@
+~/.cursor/hooks.json json /version
+1
+~/.cursor/hooks.json json-element /hooks/preToolUse@/command=/opt/promptstor/bin/promptstor hook cursor
+{"command":"/opt/promptstor/bin/promptstor hook cursor","matcher":"Write","type":"command"}
+note (ps_builtin_guard_cursor, blocking false): the edit guard uses preToolUse with matcher Write; that it sees every agent edit is unverified

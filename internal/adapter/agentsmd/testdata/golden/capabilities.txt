@@ -1,0 +1,8 @@
+kinds: rule
+file scope: false
+activations: 
+portable: deny-commands=false deny-paths=false allow-mcp-servers=false
+reads project AGENTS.md: false
+skill homes: 0
+commands as skills: false
+env ref: false

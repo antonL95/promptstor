@@ -1,0 +1,3 @@
+~/.codex/hooks.json json-element /hooks/PreToolUse@/hooks/0/command=/opt/promptstor/bin/promptstor hook codex
+{"hooks":[{"command":"/opt/promptstor/bin/promptstor hook codex","type":"command"}],"matcher":"apply_patch"}
+note (ps_builtin_guard_codex, blocking false): Codex runs the edit guard only after you trust it in /hooks

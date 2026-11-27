@@ -1,0 +1,32 @@
+{
+  "mcpServers": {
+    "tracker": {
+      "type": "stdio",
+      "command": "example-tracker",
+      "args": ["--verbose", "--region=${env:TRACKER_REGION}"],
+      "env": {
+        "MODE": "readonly",
+        "TRACKER_TOKEN": "fixture-token-value"
+      },
+      "envFile": ".env.tracker"
+    },
+    "docs": {
+      "url": "https://mcp.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer fixture-bearer-value",
+        "X-Team": "${env:TEAM}"
+      }
+    },
+    "signed": {
+      "url": "https://signed.example.com/mcp",
+      "auth": {
+        "CLIENT_ID": "example-client",
+        "CLIENT_SECRET": "fixture-oauth-secret"
+      }
+    },
+    "local": {
+      "command": "example-local",
+      "args": ["${workspaceFolder}/server.py"]
+    }
+  }
+}

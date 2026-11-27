@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "editor": { "vimMode": false },
+  "model": { "modelId": "example-model" },
+  "hasChangedDefaultModel": true,
+  "permissions": {
+    "allow": ["Shell(git)", "Read(src/**)"],
+    "deny": [
+      "Shell(sudo)",
+      "Read(secrets/**)",
+      "Write(secrets/**)",
+      "Shell(curl:*)",
+      "Write(dist/**)",
+      "WebFetch(example.com)"
+    ]
+  }
+}

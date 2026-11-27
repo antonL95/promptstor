@@ -1,0 +1,7 @@
+version: 1
+tools:
+  - claude-code
+  - codex
+edit_guards: false
+register_mcp: false
+open_project_prs: false

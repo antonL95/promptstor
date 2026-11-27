@@ -1,0 +1,6 @@
+<project>/.agents/skills root=<project> keys=[] redact=[]
+<project>/.codex/agents root=<project> keys=[] redact=[]
+<project>/.codex/config.toml root=<project> keys=[] redact=[]
+<project>/.codex/hooks.json root=<project> keys=[] redact=[]
+<project>/.codex/rules root=<project> keys=[] redact=[]
+<project>/.codex/skills root=<project> keys=[] redact=[]

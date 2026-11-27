@@ -1,0 +1,57 @@
+# Personal settings
+model = "example-model"
+sandbox_mode = "workspace-write" # keep the old sandbox
+
+[sandbox_workspace_write]
+network_access = false
+
+[projects."/workspace/sample-app"]
+trust_level = "trusted"
+
+[mcp_servers.docs]
+command = "example-docs"
+args = ["--verbose"]
+
+[mcp_servers.docs.env]
+DOCS_TOKEN = "fixture-token-value"
+MODE = "readonly"
+
+[mcp_servers.tracker]
+command = "example-tracker"
+env_vars = ["TRACKER_TOKEN"]
+cwd = "/workspace/tools"
+startup_timeout_sec = 20
+
+[mcp_servers.remote]
+url = "https://mcp.example.com/mcp"
+bearer_token_env_var = "REMOTE_TOKEN"
+http_headers = { "X-Static" = "v1" }
+env_http_headers = { "X-Team" = "TEAM_NAME" }
+
+[mcp_servers.keyed]
+url = "https://keyed.example.com/mcp"
+http_headers = { "Authorization" = "Bearer fixture-bearer-value" }
+
+[mcp_servers.parked]
+command = "example-parked"
+enabled = false
+
+[hooks.state."/workspace/hooks.json:pre_tool_use:0:0"]
+trusted_hash = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+
+[[skills.config]]
+name = "release-notes"
+enabled = false
+
+[notice]
+hide_full_access_warning = true
+
+[tui]
+theme = "example"
+
+[plugins."sample@example-market"]
+enabled = true
+
+[marketplaces.example-market]
+source_type = "git"
+source = "https://example.com/market.git"

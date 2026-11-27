@@ -1,0 +1,7 @@
+[Unit]
+Description=PromptStor drift check
+
+[Service]
+Type=oneshot
+ExecStart=:"/opt/a b/100%%/$HOME/back\\slash/prompt\"stor" doctor --check --notify
+SuccessExitStatus=1

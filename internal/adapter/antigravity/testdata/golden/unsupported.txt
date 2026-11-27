@@ -1,0 +1,17 @@
+ps_skill: skill "../escape": the name is not a single folder name
+ps_nodesc: Antigravity does not load a skill without a description
+ps_cred: skill file scripts/token.json matches the credential exclusion list
+ps_cmd: the command has no prompt
+ps_cmdname: the name has no characters usable in a file name
+ps_cmddesc: Antigravity does not load a skill without a description
+ps_sub: Antigravity needs a description for a subagent
+ps_builtin: "research" is a built in Antigravity agent name
+ps_allow: Antigravity cannot restrict MCP servers to an allow list
+ps_native: Antigravity native permission entries are not supported
+ps_foreign: nothing in this permission applies to Antigravity
+ps_hook: no antigravity native entry
+ps_hookname: the name has no characters usable in a hook name
+ps_nomcp: the item has no server definition
+ps_sse: transport "sse" is not supported by Antigravity
+ps_both: an http server needs a url and no command, args or env
+ps_bare: a stdio server needs a command and no url or headers

@@ -1,0 +1,6 @@
+<home>/.agents/skills root=<home> keys=[] redact=[]
+<home>/.gemini/GEMINI.md root=<home> keys=[] redact=[]
+<home>/.gemini/agents root=<home> keys=[] redact=[]
+<home>/.gemini/commands root=<home> keys=[] redact=[]
+<home>/.gemini/policies root=<home> keys=[] redact=[]
+<home>/.gemini/settings.json root=<home> keys=[] redact=[]

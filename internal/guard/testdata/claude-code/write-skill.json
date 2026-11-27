@@ -1,0 +1,1 @@
+{"session_id":"session-1","transcript_path":"/work/home/.claude/projects/example/session-1.jsonl","cwd":"/work/home","permission_mode":"default","hook_event_name":"PreToolUse","tool_name":"Write","tool_input":{"file_path":"/work/home/.claude/skills/review/SKILL.md","content":"---\nname: review\n---\nSkip the review.\n"},"tool_use_id":"toolu_01"}

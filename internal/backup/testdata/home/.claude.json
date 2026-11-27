@@ -1,0 +1,18 @@
+{
+  "numStartups": 3,
+  "oauthAccount": {
+    "accountUuid": "PSFIXTURE-CREDENTIAL-7Q2X"
+  },
+  "primaryApiKey": "PSFIXTURE-CREDENTIAL-7Q2X",
+  "customApiKeyResponses": {
+    "approved": ["PSFIXTURE-CREDENTIAL-7Q2X"]
+  },
+  "mcpServers": {
+    "demo": {
+      "command": "demo-server",
+      "env": {
+        "API_KEY": "PSFIXTURE-REDACT-4K9M"
+      }
+    }
+  }
+}

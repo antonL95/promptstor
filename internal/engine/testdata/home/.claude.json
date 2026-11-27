@@ -1,0 +1,9 @@
+{
+  "numStartups": 3,
+  "mcpServers": {
+    "hand-written": {
+      "type": "stdio",
+      "command": "example-local"
+    }
+  }
+}

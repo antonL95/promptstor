@@ -1,0 +1,6 @@
+---
+description: "Use when preparing a release."
+globs:
+alwaysApply: false
+---
+Tag the release.

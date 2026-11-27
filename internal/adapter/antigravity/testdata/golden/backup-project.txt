@@ -1,0 +1,4 @@
+<project>/.agents/agents root=<project> keys=[] redact=[]
+<project>/.agents/mcp_config.json root=<project> keys=[] redact=[]
+<project>/.agents/rules root=<project> keys=[] redact=[]
+<project>/.agents/skills root=<project> keys=[] redact=[]

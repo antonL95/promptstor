@@ -1,0 +1,4 @@
+model = "example-model"
+
+[projects."/work/example"]
+trust_level = "trusted"

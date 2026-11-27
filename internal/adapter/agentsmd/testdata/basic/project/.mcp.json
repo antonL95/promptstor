@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "example": { "command": "example-server", "env": { "EXAMPLE_TOKEN": "fixture-token-value" } }
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "project-note": {
+    "SessionStart": [{ "command": "./note.sh" }]
+  }
+}

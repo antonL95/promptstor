@@ -1,0 +1,125 @@
+items:
+- kind: rule
+  name: always
+  order: 10
+  source: <project>/.cursor/rules/always.mdc
+  targets:
+  - cursor
+  body: |
+    Keep changes small.
+- kind: rule
+  name: components
+  order: 10
+  source: <project>/.cursor/rules/frontend/components.mdc
+  activation: files
+  scope:
+  - web/**/*.vue
+  targets:
+  - cursor
+  body: |
+    Keep components small.
+- kind: rule
+  name: releases
+  order: 10
+  source: <project>/.cursor/rules/releases.mdc
+  description: Use when preparing a release.
+  activation: agent
+  targets:
+  - cursor
+  body: |
+    Tag the release.
+- kind: rule
+  name: Naming
+  order: 10
+  source: <project>/.cursor/rules/style.mdc
+  description: TypeScript style
+  activation: files
+  scope:
+  - '**/*.ts'
+  - src/*.tsx
+  targets:
+  - cursor
+  body: |
+    ## Naming
+
+    Use camelCase.
+- kind: rule
+  name: Imports
+  order: 20
+  source: <project>/.cursor/rules/style.mdc
+  description: TypeScript style
+  activation: files
+  scope:
+  - '**/*.ts'
+  - src/*.tsx
+  targets:
+  - cursor
+  body: |
+    ## Imports
+
+    Sort imports.
+- kind: command
+  name: ship
+  source: <project>/.cursor/commands/ship.md
+  body: |
+    Ship the current branch.
+- kind: subagent
+  name: docs-writer
+  source: <project>/.cursor/agents/docs-writer.md
+  description: Writes docs.
+  meta:
+    cursor_is_background: true
+    cursor_model: example-model
+  body: |
+    Write the docs.
+- kind: skill
+  name: project-skill
+  source: <project>/.agents/skills/project-skill
+  description: A project skill.
+  body: |
+    Follow the project steps.
+- kind: permission
+  name: Cursor permissions
+  source: <project>/.cursor/cli.json
+  portable:
+    denycommands:
+    - shred
+    denypaths: []
+    allowmcpservers: []
+- kind: hook
+  name: afterFileEdit
+  source: <project>/.cursor/hooks.json
+  native:
+    cursor:
+      command: .cursor/hooks/format.sh
+      event: afterFileEdit
+- kind: mcp
+  name: lint
+  source: <project>/.cursor/mcp.json
+  mcp:
+    transport: stdio
+    command: example-lint
+    url: ""
+    args:
+    - --stdio
+    env: {}
+    headers: {}
+    resolve: false
+grants:
+- tool: cursor
+  path: <project>/.cursor/cli.json
+  key: /permissions/allow@=Shell(ls)
+  value: Shell(ls)
+notes:
+- path: <project>/.cursor/agents/docs-writer.md
+  message: field color not imported
+- path: <project>/.cursor/rules/always.mdc
+  message: frontmatter key priority not imported
+- path: <project>/.cursor/rules/listed.mdc
+  message: frontmatter globs is not the comma separated string Cursor documents; not imported
+- path: <project>/.cursor/rules/manual.mdc
+  message: manual rules have no PromptStor activation; not imported
+- path: <project>/.cursor/rules/notes.md
+  message: ignored by Cursor
+- path: <project>/.cursorrules
+  message: legacy .cursorrules file; not imported

@@ -1,0 +1,2 @@
+0 * * * * XDG_CONFIG_HOME='/srv/dot files/<a&b>/100\%/it'\''s "here"\now' XDG_STATE_HOME='/srv/state/$USER' CODEX_HOME='/srv/codex' '/opt/promptstor/bin/promptstor' doctor --check --notify >> 'HOME/.local/state/promptstor/check.log' 2>&1 # promptstor
+@reboot XDG_CONFIG_HOME='/srv/dot files/<a&b>/100\%/it'\''s "here"\now' XDG_STATE_HOME='/srv/state/$USER' CODEX_HOME='/srv/codex' '/opt/promptstor/bin/promptstor' doctor --check --notify >> 'HOME/.local/state/promptstor/check.log' 2>&1 # promptstor

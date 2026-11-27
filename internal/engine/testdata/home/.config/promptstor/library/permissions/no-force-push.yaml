@@ -1,0 +1,5 @@
+promptstor:
+  id: ps_0000000000000000000000ENG4
+description: Block force pushes
+deny_commands:
+  - git push --force

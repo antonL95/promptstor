@@ -1,0 +1,2 @@
+prompt = "Write a commit message."
+model = "example-model"

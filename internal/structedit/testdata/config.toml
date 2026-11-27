@@ -1,0 +1,35 @@
+# synthetic Codex configuration
+model = "example-model"
+notify = [
+  "notify-tool",
+  "[not a table]",
+]
+prompt = """
+[mcp_servers.fake]
+"""
+
+# trusted folders
+[projects."/home/user/app"]
+trust_level = "trusted"
+
+# documentation server
+[mcp_servers.docs]
+command = "docs-server" # inline note
+args = [
+  ["nested"],
+]
+
+[mcp_servers.docs.env]
+LEVEL = "debug"
+
+# hook trust, written by the tool itself
+[hooks.state."/home/user/app/.codex/hooks.json:pre_tool_use"]
+trusted_hash = "sha256:0000"
+
+[[skills.config]]
+path = "/home/user/skills/one"
+enabled = false
+
+[[skills.config]]
+path = "/home/user/skills/two"
+enabled = true

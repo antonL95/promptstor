@@ -1,0 +1,2 @@
+~/.claude/settings.json json-element /hooks/PreToolUse@/hooks/0/command=/opt/promptstor/bin/promptstor hook claude-code
+{"hooks":[{"command":"/opt/promptstor/bin/promptstor hook claude-code","type":"command"}],"matcher":"Edit|MultiEdit|Write|NotebookEdit"}

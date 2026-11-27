@@ -1,0 +1,65 @@
+items:
+- kind: rule
+  name: Project notes
+  order: 10
+  source: <project>/GEMINI.md
+  targets:
+  - gemini-cli
+  body: |
+    ## Project notes
+
+    Use make.
+- kind: command
+  name: deploy
+  source: <project>/.gemini/commands/deploy.toml
+  description: Deploy
+  body: Deploy to staging.
+- kind: subagent
+  name: docs-writer
+  source: <project>/.gemini/agents/docs-writer.md
+  description: Writes docs.
+  body: |
+    Write plainly.
+- kind: skill
+  name: project-skill
+  source: <project>/.agents/skills/project-skill
+  description: Project steps.
+  body: |
+    Follow the steps.
+- kind: hook
+  name: SessionStart
+  source: <project>/.gemini/settings.json
+  native:
+    gemini-cli:
+      event: SessionStart
+      hooks:
+      - command: make hello
+        type: command
+- kind: mcp
+  name: tracker
+  source: <project>/.gemini/settings.json
+  mcp:
+    transport: stdio
+    command: example-tracker
+    url: ""
+    args: []
+    env:
+      TRACKER_TOKEN:
+        literal: ""
+        ref: env:TRACKER_TOKEN
+    headers: {}
+    resolve: false
+notes:
+- path: <project>/.gemini/policies/local.toml
+  message: project policy files are ignored by Gemini CLI
+- path: <project>/.gemini/settings.json
+  message: context.fileName set by user
+- path: <project>/.gemini/settings.json
+  message: hooks/Unknown is not a list of hook groups; not imported
+- path: <project>/.gemini/settings.json
+  message: 'server tracker: field cwd not imported'
+unresolved:
+- file: <project>/GEMINI.md
+  line: "5"
+  target: docs/missing.md
+  reason: missing

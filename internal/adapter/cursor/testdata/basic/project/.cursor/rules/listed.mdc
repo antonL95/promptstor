@@ -1,0 +1,6 @@
+---
+globs:
+  - "**/*.go"
+alwaysApply: false
+---
+A list of globs.

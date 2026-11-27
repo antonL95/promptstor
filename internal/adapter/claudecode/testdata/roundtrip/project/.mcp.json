@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "search": {"type": "stdio", "command": "example-search", "env": {"SEARCH_TOKEN": "${SEARCH_TOKEN}"}}
+  }
+}

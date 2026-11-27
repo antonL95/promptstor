@@ -1,0 +1,5 @@
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "make build"
+decision = "allow"
+priority = 950

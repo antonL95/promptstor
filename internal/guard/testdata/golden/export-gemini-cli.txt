@@ -1,0 +1,2 @@
+~/.gemini/settings.json json-element /hooks/BeforeTool@/hooks/0/command=/opt/promptstor/bin/promptstor hook gemini-cli
+{"hooks":[{"command":"/opt/promptstor/bin/promptstor hook gemini-cli","type":"command"}],"matcher":"write_file|replace"}

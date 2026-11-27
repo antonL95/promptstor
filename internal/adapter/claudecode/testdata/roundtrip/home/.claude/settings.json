@@ -1,0 +1,16 @@
+{
+  "model": "sonnet",
+  "permissions": {
+    "allow": ["Bash(make test *)"],
+    "deny": ["Bash(git push --force *)", "Read(**/.env)", "Edit(**/.env)", "WebFetch(domain:example.org)"],
+    "ask": ["Bash(git commit *)"]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [{"type": "command", "command": "~/.claude/hooks/guard.sh", "timeout": 30}]
+      }
+    ]
+  }
+}

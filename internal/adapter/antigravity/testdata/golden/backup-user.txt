@@ -1,0 +1,6 @@
+<home>/.gemini/antigravity-cli/settings.json root=<home> keys=[] redact=[]
+<home>/.gemini/config/agents root=<home> keys=[] redact=[]
+<home>/.gemini/config/hooks.json root=<home> keys=[] redact=[]
+<home>/.gemini/config/mcp_config.json root=<home> keys=[] redact=[]
+<home>/.gemini/config/rules root=<home> keys=[] redact=[]
+<home>/.gemini/config/skills root=<home> keys=[] redact=[]

@@ -1,0 +1,11 @@
+{
+  // the team keeps its own file name
+  "context": { "fileName": "CONTEXT.md" },
+  "mcpServers": {
+    "tracker": { "command": "example-tracker", "cwd": "tools", "env": { "TRACKER_TOKEN": "${TRACKER_TOKEN}" } }
+  },
+  "hooks": {
+    "SessionStart": [{ "hooks": [{ "type": "command", "command": "make hello" }] }],
+    "Unknown": "off"
+  }
+}

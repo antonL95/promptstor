@@ -1,0 +1,9 @@
+{
+  "model": "fixture-model",
+  "env": {
+    "SERVICE_KEY": "PSFIXTURE-REDACT-4K9M"
+  },
+  "permissions": {
+    "allow": ["Read"]
+  }
+}

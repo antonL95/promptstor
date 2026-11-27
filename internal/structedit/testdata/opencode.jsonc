@@ -1,0 +1,19 @@
+// synthetic opencode configuration
+{
+	"$schema": "https://opencode.ai/config.json",
+	/* the model used by default */
+	"model": "example/model", // inline note
+	"instructions": [
+		"docs/rules.md", // first
+		"docs/style.md",
+	],
+	"mcp": {
+		// local servers
+		"docs": {
+			"type": "local",
+			"command": ["docs-server", "--stdio"],
+		},
+		// nothing after docs
+	},
+	"permission": { "edit": "ask", "bash": "deny" },
+}

@@ -1,0 +1,21 @@
+{
+  // kept comment
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "tracker": {
+        "type": "local",
+        "command": ["example-tracker", "--verbose"],
+        "environment": { "TRACKER_TOKEN": "{env:TRACKER_TOKEN}", "MODE": "readonly" },
+        "disabled": false,
+        "timeout": { "execution": 60000 },
+      },
+      "docs": { "type": "remote", "url": "https://docs.example.com/mcp", "headers": { "Authorization": "Bearer {env:DOCS_TOKEN}" }, "oauth": false },
+    },
+  },
+  "permissions": [
+    { "action": "shell", "resource": "git push --force *", "effect": "deny" },
+    { "action": "read", "resource": "/etc/example/**", "effect": "deny" },
+    { "action": "edit", "resource": "/etc/example/**", "effect": "deny" },
+  ],
+}

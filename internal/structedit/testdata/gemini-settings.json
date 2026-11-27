@@ -1,0 +1,18 @@
+{
+  // synthetic Gemini CLI settings
+  "general": {
+    "vimMode": false // keep this off
+  },
+
+  /* servers */
+  "mcpServers": {
+    "docs": {
+      "command": "docs-server",
+      "args": ["--stdio"]
+    }
+  },
+  "context": {
+    "fileName": ["GEMINI.md", "AGENTS.md"]
+  }
+  // end of settings
+}

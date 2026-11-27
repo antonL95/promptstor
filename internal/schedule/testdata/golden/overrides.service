@@ -1,0 +1,10 @@
+[Unit]
+Description=PromptStor drift check
+
+[Service]
+Type=oneshot
+Environment="XDG_CONFIG_HOME=/srv/dot files/<a&b>/100%%/it's \"here\"\\now"
+Environment="XDG_STATE_HOME=/srv/state/$USER"
+Environment="CODEX_HOME=/srv/codex"
+ExecStart=:"/opt/promptstor/bin/promptstor" doctor --check --notify
+SuccessExitStatus=1

@@ -1,0 +1,7 @@
+{
+  "promptstor-guard-edits": {
+    "PreToolUse": [
+      { "matcher": "write_to_file", "hooks": [{ "type": "command", "command": "/opt/example/hooks/guard.sh", "timeout": 30 }] }
+    ]
+  }
+}

@@ -1,0 +1,43 @@
+items:
+- kind: subagent
+  name: docs-writer
+  source: <project>/.codex/agents/docs-writer.toml
+  description: Writes the docs.
+  body: Write plainly.
+- kind: skill
+  name: project-skill
+  source: <project>/.agents/skills/project-skill
+  description: Project helper.
+  body: |
+    Help with the project.
+- kind: hook
+  name: PreToolUse apply_patch|Bash
+  source: <project>/.codex/hooks.json
+  native:
+    codex:
+      event: PreToolUse
+      hooks:
+      - command: /opt/example/hooks/check.sh
+        type: command
+      matcher: apply_patch|Bash
+- kind: mcp
+  name: project-db
+  source: <project>/.codex/config.toml
+  mcp:
+    transport: stdio
+    command: example-db
+    url: ""
+    args: []
+    env:
+      DB_URL:
+        literal: ""
+        ref: env:DB_URL
+    headers: {}
+    resolve: false
+notes:
+- path: <project>/.codex/config.toml
+  message: inline [hooks]; not imported
+- path: <project>/.codex/rules/default.rules
+  message: rules file PromptStor does not manage; not imported
+- path: <project>/.codex/skills
+  message: not a documented skill folder; not imported

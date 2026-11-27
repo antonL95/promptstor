@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "editor": { "vimMode": false },
+  "permissions": {
+    "allow": ["Shell(ls)"],
+    "deny": ["Shell(sudo)", "Read(**/.env)", "Write(**/.env)"]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "tracker": {
+      "command": "example-tracker",
+      "args": ["--region=${env:REGION}"],
+      "env": { "MODE": "readonly" },
+      "envFile": ".env.tracker"
+    },
+    "docs": {
+      "url": "https://mcp.example.com/mcp",
+      "headers": { "Authorization": "Bearer ${env:DOCS_TOKEN}" }
+    }
+  }
+}

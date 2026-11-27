@@ -1,0 +1,13 @@
+promptstor:
+  id: ps_00000000000000000000000006
+description: Block destructive commands
+deny_commands:
+  - git push --force
+deny_paths:
+  - '**/*.example-secret'
+allow_mcp_servers:
+  - example-docs
+native:
+  claude:
+    ask:
+      - Bash(rm:*)

@@ -1,0 +1,8 @@
+{
+  "mcp": {
+    "servers": {
+      "search": { "type": "remote", "url": "https://search.example.com/mcp", "headers": { "Authorization": "Bearer {env:SEARCH_TOKEN}" } },
+      "lint": { "type": "local", "command": ["example-lint"] }
+    }
+  }
+}

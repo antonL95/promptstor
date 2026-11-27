@@ -1,0 +1,3 @@
+user scope: 0 units
+project scope: 1 units
+tool=agents-md path=<project>/AGENTS.md root=<project> kind=md-section key="" mode=0644 secret=false items=ps_build,ps_go,ps_release

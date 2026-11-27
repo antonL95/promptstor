@@ -1,0 +1,56 @@
+{
+  "generated": "2026-11-27T09:30:00Z",
+  "library_hash": "0f3c9a",
+  "clean": false,
+  "fingerprint": "534ca52256c8d8d52365614b11c7a1aece98752dc880eaf0a7b62e3d091b44fa",
+  "counts": {
+    "ack-required": 1,
+    "hand-edit": 1,
+    "info": 1,
+    "pending": 1,
+    "runtime-grant": 1,
+    "unsupported": 1
+  },
+  "findings": [
+    {
+      "kind": "pending",
+      "tool": "claude-code",
+      "item": "ps_0000000000000000000000DRF1",
+      "path": "/fixture/home/.claude/CLAUDE.md",
+      "detail": "library changed (Plain language)"
+    },
+    {
+      "kind": "hand-edit",
+      "tool": "gemini-cli",
+      "item": "ps_0000000000000000000000DRF1",
+      "path": "/fixture/home/.gemini/GEMINI.md",
+      "detail": "agent memory write (Plain language)"
+    },
+    {
+      "kind": "unsupported",
+      "tool": "codex",
+      "item": "ps_0000000000000000000000DRF4",
+      "name": "guard",
+      "detail": "acknowledged: deny commands cannot be expressed"
+    },
+    {
+      "kind": "ack-required",
+      "tool": "cursor",
+      "item": "ps_0000000000000000000000DRF4",
+      "name": "guard",
+      "detail": "deny commands cannot be expressed"
+    },
+    {
+      "kind": "runtime-grant",
+      "tool": "claude-code",
+      "name": "Bash(git status)",
+      "path": "/fixture/home/.claude/settings.json",
+      "detail": "/permissions/allow@=Bash(git status)"
+    },
+    {
+      "kind": "info",
+      "path": "/fixture/home/.agents/skills",
+      "detail": "loaded twice by cursor, opencode"
+    }
+  ]
+}
