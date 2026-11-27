@@ -1,0 +1,181 @@
+items:
+- kind: rule
+  name: AGENTS
+  order: 10
+  source: <home>/.config/opencode/AGENTS.md
+  body: |
+    Keep answers short.
+- kind: rule
+  name: Reviews
+  order: 20
+  source: <home>/.config/opencode/AGENTS.md
+  body: |
+    ## Reviews
+
+    Review every change before merging.
+- kind: rule
+  name: Commits
+  order: 30
+  source: <home>/.config/opencode/AGENTS.md
+  body: |
+    ## Commits
+
+    Use conventional commit subjects.
+- kind: subagent
+  name: planner
+  source: <home>/.config/opencode/agent/planner.md
+  description: Plans work
+  meta:
+    opencode_disabled: false
+    opencode_mode: primary
+    opencode_steps: 8
+  body: |
+    Plan before editing.
+- kind: subagent
+  name: reviewer
+  source: <home>/.config/opencode/agents/reviewer.md
+  description: Reviews changes for regressions
+  meta:
+    opencode_model: example-provider/example-model
+    opencode_permissions:
+    - action: edit
+      effect: deny
+      resource: '*'
+  body: |
+    Review the current changes and list findings by severity.
+- kind: subagent
+  name: scribe
+  source: <home>/.config/opencode/opencode.json
+  description: Writes changelogs
+  meta:
+    opencode_steps: 4
+  body: Write the changelog.
+- kind: subagent
+  name: team/auditor
+  source: <home>/.config/opencode/agents/team/auditor.md
+  description: Audits dependencies
+  meta:
+    opencode_mode: primary
+  body: |
+    Audit the dependency list.
+- kind: command
+  name: git:commit
+  source: <home>/.config/opencode/commands/git/commit.md
+  description: Write a commit message
+  meta:
+    opencode_agent: build
+    opencode_subagent: false
+  body: |
+    Write a commit message for $ARGUMENTS
+- kind: command
+  name: legacy
+  source: <home>/.config/opencode/command/legacy.md
+  meta:
+    opencode_model: example-provider/example-model#high
+    opencode_subagent: true
+  body: |
+    Summarise $1
+- kind: command
+  name: triage
+  source: <home>/.config/opencode/opencode.json
+  description: Triage issues
+  meta:
+    opencode_subagent: true
+  body: Triage the open issues.
+- kind: skill
+  name: local-only
+  source: <home>/.config/opencode/skills/local-only
+  description: Lives in the opencode folder
+  body: |
+    Only opencode reads this.
+- kind: skill
+  name: release-notes
+  source: <home>/.agents/skills/release-notes
+  description: Draft release notes
+  body: |
+    Summarise the merged changes.
+- kind: permission
+  name: opencode permissions
+  source: <home>/.config/opencode/opencode.json
+  portable:
+    denycommands:
+    - rm -rf
+    - git push --force
+    denypaths:
+    - ~/.ssh/**
+    allowmcpservers: []
+- kind: mcp
+  name: docs
+  source: <home>/.config/opencode/opencode.json
+  mcp:
+    transport: http
+    command: ""
+    url: https://old.example.com/mcp
+    args: []
+    env: {}
+    headers: {}
+    resolve: false
+- kind: mcp
+  name: tracker
+  source: <home>/.config/opencode/opencode.json
+  mcp:
+    transport: stdio
+    command: example-tracker
+    url: ""
+    args:
+    - --verbose
+    env:
+      MODE:
+        literal: readonly
+        ref: ""
+      TRACKER_TOKEN:
+        literal: ""
+        ref: needs-setup:TRACKER_TOKEN
+    headers: {}
+    resolve: false
+foreign:
+- path: <home>/.config/opencode/.gitignore
+  owner: opencode packages
+  reason: package manager state for plugins; opencode manages it
+- path: <home>/.config/opencode/package.json
+  owner: opencode packages
+  reason: package manager state for plugins; opencode manages it
+- path: <home>/.config/opencode/plugins
+  owner: opencode plugins
+  reason: JavaScript plugins; not managed by PromptStor
+grants:
+- tool: opencode
+  path: <home>/.config/opencode/opencode.json
+  key: /permission/bash/git log *
+  value: shell git log *
+- tool: opencode
+  path: <home>/.config/opencode/opencode.json
+  key: /permissions@#34b3d5019514ab82a073795dc3da405ef6c31ad032b7099bafb713aaa5efe740
+  value: shell git status *
+notes:
+- path: <home>/.config/opencode/agent/planner.md
+  message: field temperature not imported
+- path: <home>/.config/opencode/agent/planner.md
+  message: field tools not imported
+- path: <home>/.config/opencode/agents/build.md
+  message: overrides the built in agent "build"; not imported
+- path: <home>/.config/opencode/agents/team/auditor.md
+  message: field request not imported
+- path: <home>/.config/opencode/commands/git/commit.md
+  message: field argument-hint not imported
+- path: <home>/.config/opencode/opencode.json
+  message: permissions rule bash "sudo *" never matches, because opencode V2 calls the action shell; not imported
+- path: <home>/.config/opencode/opencode.json
+  message: deny rule webfetch "*" is not portable; not imported
+- path: <home>/.config/opencode/opencode.json
+  message: ask rules are not imported
+- path: <home>/.config/opencode/opencode.json
+  message: deny rule edit "*.lock" is not portable; not imported
+- path: <home>/.config/opencode/opencode.json
+  message: 'server retired: disabled; not imported'
+- path: <home>/.config/opencode/opencode.json
+  message: 'server tracker: secret scrubbed, env/TRACKER_TOKEN'
+- path: <home>/.config/opencode/opencode.json
+  message: instructions is not imported
+- path: <home>/.config/opencode/opencode.json
+  message: plugin is not imported

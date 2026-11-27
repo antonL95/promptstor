@@ -1,0 +1,16 @@
+ps_files: opencode has no scoped rules
+ps_agent: opencode has no scoped rules
+ps_skill: skill "../escape": the name is not a single folder name
+ps_cred: skill file scripts/token.json matches the credential exclusion list
+ps_cmd: the command has no prompt
+ps_cmdname: the name has no characters usable in a file name
+ps_cmdmeta: written without argument-hint, which opencode command files do not take
+ps_subname: the name has no characters usable in a file name
+ps_allow: opencode has no rule that allows one MCP server without also matching others
+ps_native: opencode native permission entries are not supported
+ps_foreign: nothing in this permission applies to opencode
+ps_hook: opencode has only JS plugins
+ps_nomcp: the item has no server definition
+ps_sse: transport "sse" is not supported by opencode
+ps_both: an http server needs a url and no command, args or env
+ps_bare: a stdio server needs a command and no url or headers

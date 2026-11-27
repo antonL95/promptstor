@@ -1,0 +1,35 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["example-opencode-plugin"],
+  "instructions": ["CONTRIBUTING.md"],
+  "provider": { "example": { "options": { "apiKey": "fixture-provider-secret" } } },
+  "mcp": {
+    "tracker": {
+      "type": "local",
+      "command": ["example-tracker", "--verbose"],
+      "environment": { "TRACKER_TOKEN": "fixture-token-value", "MODE": "readonly" },
+      "enabled": true
+    },
+    "retired": { "type": "local", "command": ["example-retired"], "enabled": false },
+    "docs": { "type": "remote", "url": "https://old.example.com/mcp" }
+  },
+  "permission": {
+    "bash": { "rm -rf *": "deny", "git log *": "allow" },
+    "websearch": "ask"
+  },
+  "tools": { "webfetch": false },
+  "command": {
+    "triage": { "template": "Triage the open issues.", "description": "Triage issues", "subtask": true }
+  },
+  "agent": {
+    "scribe": { "prompt": "Write the changelog.", "description": "Writes changelogs", "mode": "subagent", "maxSteps": 4 }
+  },
+  "permissions": [
+    { "action": "shell", "resource": "git push --force *", "effect": "deny" },
+    { "action": "bash", "resource": "sudo *", "effect": "deny" },
+    { "action": "read", "resource": "~/.ssh/**", "effect": "deny" },
+    { "action": "edit", "resource": "~/.ssh/**", "effect": "deny" },
+    { "action": "edit", "resource": "*.lock", "effect": "deny" },
+    { "action": "shell", "resource": "git status *", "effect": "allow" }
+  ]
+}

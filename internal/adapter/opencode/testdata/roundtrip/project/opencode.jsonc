@@ -1,0 +1,4 @@
+{
+  "mcp": { "servers": { "search": { "type": "remote", "url": "https://search.example.com/mcp" } } },
+  "permissions": [{ "action": "shell", "resource": "rm -rf *", "effect": "deny" }]
+}

@@ -1,0 +1,4 @@
+<project>/.agents/skills root=<project> keys=[] redact=[]
+<project>/.opencode root=<project> keys=[] redact=[]
+<project>/opencode.json root=<project> keys=[] redact=[]
+<project>/opencode.jsonc root=<project> keys=[] redact=[]

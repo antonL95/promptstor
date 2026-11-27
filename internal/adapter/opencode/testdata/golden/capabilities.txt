@@ -1,0 +1,8 @@
+kinds: command,mcp,permission,rule,skill,subagent
+file scope: false
+activations: always
+portable: deny-commands=true deny-paths=true allow-mcp-servers=false
+reads project AGENTS.md: true
+skill homes: project=.agents/skills user=~/.agents/skills
+commands as skills: false
+env ref: {env:NAME}

@@ -1,0 +1,3 @@
+{
+  "mcp": { "servers": { "lint": { "type": "local", "command": ["example-lint", "--strict"] } } }
+}
