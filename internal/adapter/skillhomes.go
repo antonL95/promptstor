@@ -3,6 +3,7 @@ package adapter
 import (
 	"bytes"
 	"cmp"
+	"fmt"
 	"io/fs"
 	"maps"
 	"path/filepath"
@@ -62,10 +63,13 @@ func SkillReaders(scope Scope, dir string) []ToolID {
 	return readers
 }
 
-func SkillUnits(t Target, tool ToolID, it library.Item) []plan.Unit {
+func SkillUnits(t Target, tool ToolID, it library.Item) ([]plan.Unit, error) {
 	home, ok := skillHome(t.Scope, tool)
-	if !ok || !isFolderName(it.Name) {
-		return nil
+	if !ok {
+		return nil, nil
+	}
+	if !isFolderName(it.Name) {
+		return nil, fmt.Errorf("skill %q: the name is not a single folder name", it.Name)
 	}
 	root, dir := t.Env.Home, t.Env.Expand(home)
 	if t.Scope == ScopeProject {
@@ -74,7 +78,7 @@ func SkillUnits(t Target, tool ToolID, it library.Item) []plan.Unit {
 	folder := filepath.Join(dir, it.Name)
 	document, err := renderSkill(it)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("skill %q: render %s: %w", it.Name, skillFile, err)
 	}
 	newUnit := func(path string, content []byte, mode fs.FileMode) plan.Unit {
 		return plan.Unit{
@@ -91,13 +95,13 @@ func SkillUnits(t Target, tool ToolID, it library.Item) []plan.Unit {
 	for _, key := range slices.Sorted(maps.Keys(it.Files)) {
 		relative := filepath.FromSlash(key)
 		if !filepath.IsLocal(relative) || relative == skillFile {
-			return nil
+			return nil, fmt.Errorf("skill %q: attachment %q is not a file inside the skill folder", it.Name, key)
 		}
 		file := it.Files[key]
 		units = append(units, newUnit(filepath.Join(folder, relative), slices.Clone(file.Data), attachmentMode(file)))
 	}
 	slices.SortFunc(units, func(a, b plan.Unit) int { return cmp.Compare(a.Path, b.Path) })
-	return units
+	return units, nil
 }
 
 func isFolderName(name string) bool {
@@ -121,9 +125,9 @@ func renderSkill(it library.Item) ([]byte, error) {
 		if key == "name" || key == "description" {
 			continue
 		}
-		value := &yaml.Node{}
-		if err := value.Encode(it.Meta[key]); err != nil {
-			return nil, err
+		value, err := encodeValue(it.Meta[key])
+		if err != nil {
+			return nil, fmt.Errorf("meta %q: %w", key, err)
 		}
 		header.Content = append(header.Content, stringNode(key), value)
 	}
@@ -140,6 +144,19 @@ func renderSkill(it library.Item) ([]byte, error) {
 	buffer.WriteString(frontmatterTag)
 	buffer.WriteString(it.Body)
 	return managed.WithNotice(buffer.Bytes()), nil
+}
+
+func encodeValue(value any) (node *yaml.Node, err error) {
+	defer func() {
+		if recover() != nil {
+			node, err = nil, fmt.Errorf("a %T cannot be written as YAML", value)
+		}
+	}()
+	node = &yaml.Node{}
+	if err := node.Encode(value); err != nil {
+		return nil, err
+	}
+	return node, nil
 }
 
 func stringNode(value string) *yaml.Node {

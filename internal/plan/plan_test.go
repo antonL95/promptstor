@@ -88,7 +88,7 @@ func entryFor(t *testing.T, u plan.Unit) manifest.Entry {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return manifest.Entry{Tool: u.Tool, Path: u.Path, Unit: u.Kind, Key: u.Key, Hash: hash, Items: u.Items, Written: written}
+	return manifest.Entry{Tool: u.Tool, Path: u.Path, Root: u.Root, Unit: u.Kind, Key: u.Key, Hash: hash, Items: u.Items, Written: written}
 }
 
 func diff(t *testing.T, desired []plan.Unit, m manifest.Manifest, tools []string, opt plan.Options) []plan.FileChange {
@@ -455,7 +455,7 @@ func TestDiffRemovesUnitsDroppedFromLibrary(t *testing.T) {
 	owned := []plan.Unit{
 		unit(env, adapter.ClaudeCode, ".claude/CLAUDE.md", manifest.UnitSection, "", "Use tabs.\n"),
 		unit(env, adapter.ClaudeCode, ".claude/settings.json", manifest.UnitJSON, "/model", `"example-model"`),
-		unit(env, "claude-code,gemini-cli", ".claude/settings.json", manifest.UnitJSONElement, "/permissions/allow@=Bash(ls)", `"Bash(ls)"`),
+		unit(env, "claude-code,codex", ".claude/settings.json", manifest.UnitJSONElement, "/permissions/allow@=Bash(ls)", `"Bash(ls)"`),
 		unit(env, adapter.Codex, ".codex/config.toml", manifest.UnitTOMLTable, "mcp_servers.docs", "[mcp_servers.docs]\ncommand = \"docs-server\"\n"),
 		unit(env, adapter.ClaudeCode, ".claude/skills/x/SKILL.md", manifest.UnitFile, "", "skill\n"),
 		unit(env, adapter.ClaudeCode, ".claude/skills/x/scripts/run.sh", manifest.UnitFile, "", "echo run\n"),
@@ -466,7 +466,7 @@ func TestDiffRemovesUnitsDroppedFromLibrary(t *testing.T) {
 		m.Put(entryFor(t, u))
 	}
 
-	changes := diff(t, nil, m, []string{adapter.ClaudeCode, adapter.Codex}, plan.Options{Roots: []string{env.Home}})
+	changes := diff(t, nil, m, []string{adapter.ClaudeCode, adapter.Codex}, plan.Options{})
 	wantOps := map[string]plan.Op{
 		at(env, ".claude/CLAUDE.md"):               plan.OpUpdate,
 		at(env, ".claude/settings.json"):           plan.OpUpdate,
@@ -516,8 +516,10 @@ func TestDiffRemovesUnitsDroppedFromLibrary(t *testing.T) {
 func TestDiffRemovalWithoutKnownRootBlocked(t *testing.T) {
 	env := home(t)
 	owned := unit(env, adapter.ClaudeCode, ".claude/CLAUDE.md", manifest.UnitSection, "", "Use tabs.\n")
+	rootless := entryFor(t, owned)
+	rootless.Root = ""
 	var m manifest.Manifest
-	m.Put(entryFor(t, owned))
+	m.Put(rootless)
 	changes := diff(t, nil, m, []string{adapter.ClaudeCode}, plan.Options{})
 	if c := only(t, changes, owned.Path); c.Blocked != "no root known for this file" {
 		t.Errorf("blocked %q", c.Blocked)
@@ -722,5 +724,34 @@ func TestApplyRefusesFileChangedSincePlan(t *testing.T) {
 	saved := loadManifest(t, env)
 	if _, ok := saved.Get(path, manifest.UnitJSON, "/model"); ok {
 		t.Error("unwritten unit recorded")
+	}
+}
+
+func TestSharedEntryKeptForToolsOutsideSync(t *testing.T) {
+	env := home(t)
+	path := at(env, ".claude/settings.json")
+	shared := unit(env, "claude-code,codex,gemini-cli", ".claude/settings.json", manifest.UnitJSONElement, "/permissions/allow@=Bash(ls)", `"Bash(ls)"`)
+	var m manifest.Manifest
+	m.Put(entryFor(t, shared))
+	changes := diff(t, nil, m, []string{adapter.ClaudeCode, adapter.Codex}, plan.Options{})
+	c := only(t, changes, path)
+	if c.Op != plan.OpNoop || c.Blocked != "" || len(c.Removed) != 0 || len(c.Retagged) != 1 || c.Retagged[0].Tool != adapter.GeminiCLI {
+		t.Fatalf("change %+v", c)
+	}
+	before := testenv.TreeHash(t, env.Home)
+	snap := &recorder{t: t, root: env.Home}
+	result, err := apply(env, changes, snap, &m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertUntouched(t, env, before, snap)
+	if len(result.Written) != 0 {
+		t.Errorf("written %v", result.Written)
+	}
+	saved := loadManifest(t, env)
+	want := entryFor(t, shared)
+	want.Tool = adapter.GeminiCLI
+	if !reflect.DeepEqual(saved.Entries, []manifest.Entry{want}) {
+		t.Errorf("manifest %+v", saved.Entries)
 	}
 }

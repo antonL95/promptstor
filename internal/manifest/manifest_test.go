@@ -31,6 +31,7 @@ func TestManifestRoundTrip(t *testing.T) {
 	full := entry("codex", "/b", UnitTOMLTable, "mcp_servers.x")
 	full.Items = []library.ID{"rule/one", "rule/two"}
 	full.Secret = true
+	full.Root = "/home/user"
 	m.Put(full)
 	m.Put(entry("claude", "/a", UnitJSON, "/z"))
 	m.Put(entry("claude", "/a", UnitJSON, "/b"))
@@ -347,5 +348,23 @@ func TestForToolMatchesAnyMemberOfSharedEntry(t *testing.T) {
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("ForTool(%q) = %v, want %v", tool, got, want)
 		}
+	}
+}
+
+func TestEntryRootSavedAsRoot(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "manifest.json")
+	var m Manifest
+	e := entry("codex", "/home/user/b", UnitFile, "")
+	e.Root = "/home/user"
+	m.Put(e)
+	if err := m.Save(path); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `"root": "/home/user"`) {
+		t.Errorf("saved %s", data)
 	}
 }

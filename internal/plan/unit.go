@@ -35,13 +35,13 @@ type FileChange struct {
 	Op            Op
 	Blocked       string
 	Record        []Unit
+	Retagged      []manifest.Entry
 	ReplaceLink   bool
 	SharedState   bool
 }
 
 type Options struct {
 	ReplaceSymlinks, Adopt []string
-	Roots                  []string
 	SharedState            []string
 }
 

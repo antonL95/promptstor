@@ -35,6 +35,7 @@ type fileDraft struct {
 	path, root string
 	units      []Unit
 	removed    []manifest.Entry
+	retagged   []manifest.Entry
 	blocked    string
 }
 
@@ -64,20 +65,29 @@ func Diff(desired []Unit, m manifest.Manifest, tools []string, opt Options) ([]F
 		}
 	}
 	for _, e := range m.Entries {
-		if _, wanted := groups[unitKey{e.Path, e.Unit, e.Key}]; wanted || !ownedByAny(e, tools) {
+		if _, wanted := groups[unitKey{e.Path, e.Unit, e.Key}]; wanted {
+			continue
+		}
+		remaining := slices.DeleteFunc(e.Tools(), func(tool string) bool { return slices.Contains(tools, tool) })
+		if len(remaining) == len(e.Tools()) {
 			continue
 		}
 		draft := draftFor(e.Path)
-		draft.removed = append(draft.removed, e)
+		if draft.root == "" {
+			draft.root = e.Root
+		}
+		if len(remaining) == 0 {
+			draft.removed = append(draft.removed, e)
+			continue
+		}
+		e.Tool = strings.Join(remaining, ",")
+		draft.retagged = append(draft.retagged, e)
 	}
-	roots := knownRoots(desired, opt.Roots)
 	changes := make([]FileChange, 0, len(drafts))
 	for _, path := range slices.Sorted(maps.Keys(drafts)) {
 		draft := drafts[path]
-		if draft.root == "" {
-			draft.root = rootFor(path, roots)
-		}
 		slices.SortFunc(draft.removed, compareEntries)
+		slices.SortFunc(draft.retagged, compareEntries)
 		blockMixedFile(draft)
 		changes = append(changes, planFile(draft, &m, opt))
 	}
@@ -149,33 +159,6 @@ func toolsOf(units []Unit) []string {
 	return slices.Compact(tools)
 }
 
-func ownedByAny(e manifest.Entry, tools []string) bool {
-	return slices.ContainsFunc(e.Tools(), func(tool string) bool { return slices.Contains(tools, tool) })
-}
-
-func knownRoots(desired []Unit, extra []string) []string {
-	roots := slices.Clone(extra)
-	for _, u := range desired {
-		roots = append(roots, u.Root)
-	}
-	slices.Sort(roots)
-	return slices.Compact(roots)
-}
-
-func rootFor(path string, roots []string) string {
-	best := ""
-	for _, root := range roots {
-		if !filepath.IsAbs(root) {
-			continue
-		}
-		relative, err := filepath.Rel(filepath.Clean(root), path)
-		if err == nil && relative != "." && filepath.IsLocal(relative) && len(root) > len(best) {
-			best = filepath.Clean(root)
-		}
-	}
-	return best
-}
-
 func blockMixedFile(draft *fileDraft) {
 	if draft.blocked != "" || len(draft.units) < 2 {
 		return
@@ -191,6 +174,7 @@ func planFile(draft *fileDraft, m *manifest.Manifest, opt Options) FileChange {
 		Root:        draft.root,
 		Units:       draft.units,
 		Removed:     draft.removed,
+		Retagged:    draft.retagged,
 		Op:          OpNoop,
 		SharedState: slices.Contains(opt.SharedState, draft.path),
 	}

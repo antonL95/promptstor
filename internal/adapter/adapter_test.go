@@ -41,7 +41,11 @@ func unitsFor(t *testing.T, tg adapter.Target, it library.Item, tools ...adapter
 	t.Helper()
 	var units []plan.Unit
 	for _, tool := range tools {
-		units = append(units, adapter.SkillUnits(tg, tool, it)...)
+		got, err := adapter.SkillUnits(tg, tool, it)
+		if err != nil {
+			t.Fatal(err)
+		}
+		units = append(units, got...)
 	}
 	return units
 }
@@ -85,7 +89,7 @@ func TestSkillUnitsPerSelection(t *testing.T) {
 
 func TestSkillUnitsShape(t *testing.T) {
 	it := skill(t)
-	units := adapter.SkillUnits(target(t, adapter.ScopeUser), adapter.Codex, it)
+	units := unitsFor(t, target(t, adapter.ScopeUser), it, adapter.Codex)
 	root := "/home/user"
 	dir := "/home/user/.agents/skills/release-notes"
 	want := map[string]fs.FileMode{
@@ -127,15 +131,39 @@ func TestSkillUnitsShape(t *testing.T) {
 func TestSkillUnitsIdenticalAcrossTools(t *testing.T) {
 	it := skill(t)
 	tg := target(t, adapter.ScopeProject)
-	first := adapter.SkillUnits(tg, adapter.Codex, it)
+	first := unitsFor(t, tg, it, adapter.Codex)
 	for _, tool := range []adapter.ToolID{adapter.GeminiCLI, adapter.OpenCode, adapter.Cursor, adapter.Antigravity} {
-		other := adapter.SkillUnits(tg, tool, it)
+		other := unitsFor(t, tg, it, tool)
 		for i := range other {
 			other[i].Tool = adapter.Codex
 		}
 		if !reflect.DeepEqual(first, other) {
 			t.Errorf("%s units differ from codex", tool)
 		}
+	}
+}
+
+func TestSkillUnitsRejectInvalidSkills(t *testing.T) {
+	cases := map[string]func(*library.Item){
+		"name with separator":   func(it *library.Item) { it.Name = "a/b" },
+		"name leaving the home": func(it *library.Item) { it.Name = ".." },
+		"empty name":            func(it *library.Item) { it.Name = "" },
+		"attachment outside":    func(it *library.Item) { it.Files["../escape.sh"] = library.File{Data: []byte("x")} },
+		"attachment SKILL.md":   func(it *library.Item) { it.Files["SKILL.md"] = library.File{Data: []byte("x")} },
+		"meta not encodable":    func(it *library.Item) { it.Meta["bad"] = make(chan int) },
+	}
+	for name, breakIt := range cases {
+		t.Run(name, func(t *testing.T) {
+			it := skill(t)
+			breakIt(&it)
+			units, err := adapter.SkillUnits(target(t, adapter.ScopeUser), adapter.Codex, it)
+			if err == nil || units != nil {
+				t.Errorf("units %v, error %v", units, err)
+			}
+		})
+	}
+	if units, err := adapter.SkillUnits(target(t, adapter.ScopeUser), adapter.AgentsMD, skill(t)); err != nil || units != nil {
+		t.Errorf("agents-md: units %v, error %v", units, err)
 	}
 }
 

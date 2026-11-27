@@ -31,6 +31,7 @@ const (
 type Entry struct {
 	Tool    string       `json:"tool"`
 	Path    string       `json:"path"`
+	Root    string       `json:"root"`
 	Unit    UnitKind     `json:"unit"`
 	Key     string       `json:"key"`
 	Hash    string       `json:"hash"`

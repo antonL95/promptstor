@@ -41,7 +41,7 @@ func (a Applier) Apply(changes []FileChange, snap Snapshotter, m *manifest.Manif
 		switch {
 		case c.Blocked != "":
 			result.Skipped = append(result.Skipped, c)
-		case c.Op != OpNoop || len(c.Record) > 0 || len(c.Removed) > 0:
+		case c.Op != OpNoop || len(c.Record) > 0 || len(c.Removed) > 0 || len(c.Retagged) > 0:
 			pending = append(pending, c)
 		}
 	}
@@ -241,6 +241,9 @@ func record(m *manifest.Manifest, c FileChange, now time.Time) error {
 	for _, e := range c.Removed {
 		m.Remove(e.Path, e.Unit, e.Key)
 	}
+	for _, e := range c.Retagged {
+		m.Put(e)
+	}
 	units := c.Record
 	if c.Op != OpNoop {
 		units = c.Units
@@ -253,6 +256,7 @@ func record(m *manifest.Manifest, c FileChange, now time.Time) error {
 		m.Put(manifest.Entry{
 			Tool:    u.Tool,
 			Path:    u.Path,
+			Root:    u.Root,
 			Unit:    u.Kind,
 			Key:     u.Key,
 			Hash:    hash,
