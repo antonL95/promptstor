@@ -2,7 +2,9 @@ package cli
 
 import (
 	"io"
+	"time"
 
+	"github.com/antonL95/promptstor/internal/paths"
 	"github.com/spf13/cobra"
 )
 
@@ -10,6 +12,8 @@ type Deps struct {
 	Stdin  io.Reader
 	Stdout io.Writer
 	Stderr io.Writer
+	Env    paths.Env
+	Now    func() time.Time
 }
 
 func NewRoot(d Deps) *cobra.Command {
