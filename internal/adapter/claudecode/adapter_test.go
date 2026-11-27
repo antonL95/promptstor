@@ -686,3 +686,14 @@ func TestRoundTripNoChanges(t *testing.T) {
 		})
 	}
 }
+
+func TestBackupSetDoesNotRedactUserValues(t *testing.T) {
+	for _, scope := range []adapter.Scope{adapter.ScopeUser, adapter.ScopeProject} {
+		tg := target(t, "basic", scope, adapter.ClaudeCode)
+		for _, entry := range registered(t).BackupSet(tg) {
+			if len(entry.RedactKeys) != 0 {
+				t.Errorf("%s %s redacts %v", scope, relative(tg, entry.Path), entry.RedactKeys)
+			}
+		}
+	}
+}

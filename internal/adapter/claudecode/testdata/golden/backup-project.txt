@@ -3,5 +3,5 @@
 <project>/.claude/rules root=<project> keys=[] redact=[]
 <project>/.claude/settings.json root=<project> keys=[] redact=[]
 <project>/.claude/skills root=<project> keys=[] redact=[]
-<project>/.mcp.json root=<project> keys=[] redact=[/mcpServers/search/env/SEARCH_TOKEN]
+<project>/.mcp.json root=<project> keys=[] redact=[]
 <project>/CLAUDE.md root=<project> keys=[] redact=[]
