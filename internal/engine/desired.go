@@ -11,6 +11,7 @@ import (
 	"github.com/antonL95/promptstor/internal/library"
 	"github.com/antonL95/promptstor/internal/manifest"
 	"github.com/antonL95/promptstor/internal/plan"
+	"github.com/antonL95/promptstor/internal/policy"
 )
 
 type desired struct {
@@ -48,11 +49,19 @@ func (e Engine) desired(projectRoot string, lib scopedLibrary, m manifest.Manife
 		return desired{}, err
 	}
 	d := desired{selected: map[string]bool{}, roots: map[string]bool{e.Env.Home: true}, unsupported: slices.Clone(e.Notices)}
+	var projectAcks policy.Acks
 	if projectRoot != "" {
 		d.roots[projectRoot] = true
+		if projectAcks, err = policy.LoadProjectAcks(projectRoot); err != nil {
+			return desired{}, err
+		}
 	}
 	for _, t := range targets {
 		merged := lib.scopes[t.Scope]
+		scoped := e
+		if t.Scope == adapter.ScopeProject {
+			scoped.Acks = e.Acks.WithProject(projectAcks, merged.Items)
+		}
 		for _, tool := range t.Selected {
 			a, err := e.adapterFor(tool)
 			if err != nil {
@@ -65,7 +74,7 @@ func (e Engine) desired(projectRoot string, lib scopedLibrary, m manifest.Manife
 			if t.Scope != adapter.ScopeUser {
 				items = slices.DeleteFunc(slices.Clone(items), func(it library.Item) bool { return library.IsBuiltin(it.ID) })
 			}
-			result, err := e.export(t, a, items, m)
+			result, err := scoped.export(t, a, items, m)
 			if err != nil {
 				return desired{}, err
 			}

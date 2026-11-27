@@ -38,6 +38,7 @@ func Check(root string, out io.Writer) (int, error) {
 			return codeError, err
 		}
 	}
+	r.literals(generated.literals)
 	r.unsupported(generated.unsupported)
 	return r.finish()
 }

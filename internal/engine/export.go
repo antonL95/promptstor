@@ -16,9 +16,8 @@ import (
 )
 
 const (
-	acknowledgedPrefix = "acknowledged: "
-	ReasonNeedsSetup   = "needs manual setup: "
-	reasonUnresolved   = "secret not resolved: "
+	ReasonNeedsSetup = "needs manual setup: "
+	reasonUnresolved = "secret not resolved: "
 )
 
 type exported struct {
@@ -99,15 +98,11 @@ func (x toolExport) kept(m manifest.Manifest) []manifest.Entry {
 }
 
 func (e Engine) acknowledge(u adapter.Unsupported, x toolExport) adapter.Unsupported {
-	if !u.Blocking {
+	item, found := x.originals[u.ItemID]
+	if !found {
 		return u
 	}
-	item, found := x.originals[u.ItemID]
-	if found && e.Acks.Has(u.ItemID, cmp.Or(u.Tool, x.tool), library.ContentHash(item)) {
-		u.Reason = acknowledgedPrefix + u.Reason
-		u.Blocking = false
-	}
-	return u
+	return e.Acks.Acknowledge(u, item, cmp.Or(u.Tool, x.tool))
 }
 
 func (e Engine) prepareServers(x *toolExport, items []library.Item, envRef func(string) string) []library.Item {

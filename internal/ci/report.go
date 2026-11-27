@@ -81,6 +81,12 @@ func sameHash(kind manifest.UnitKind, want, have []byte) (bool, error) {
 	return wanted == found, nil
 }
 
+func (r *report) literals(found []literal) {
+	for _, l := range found {
+		r.problem("literal secret in %s (%s); use an env placeholder\n", l.item, l.key)
+	}
+}
+
 func (r *report) unsupported(all []adapter.Unsupported) {
 	sorted := slices.Clone(all)
 	slices.SortFunc(sorted, func(a, b adapter.Unsupported) int {

@@ -1,6 +1,7 @@
 package ci
 
 import (
+	"cmp"
 	"fmt"
 	"os"
 	"os/exec"
@@ -15,7 +16,7 @@ import (
 	"github.com/antonL95/promptstor/internal/library"
 	"github.com/antonL95/promptstor/internal/paths"
 	"github.com/antonL95/promptstor/internal/plan"
-	"github.com/antonL95/promptstor/internal/secrets"
+	"github.com/antonL95/promptstor/internal/policy"
 )
 
 const (
@@ -27,11 +28,13 @@ type project struct {
 	root  string
 	tools []adapter.ToolID
 	items library.Merged
+	acks  policy.Acks
 }
 
 type export struct {
 	units       []plan.Unit
 	unsupported []adapter.Unsupported
+	literals    []literal
 }
 
 func load(root string) (project, error) {
@@ -46,7 +49,12 @@ func load(root string) (project, error) {
 	}
 	merged, _ := library.Merge([]library.LayerItems{{Layer: library.LayerProject, Items: items}})
 	merged.Items = slices.DeleteFunc(merged.Items, func(it library.Item) bool { return library.IsBuiltin(it.ID) })
-	return project{root: root, tools: tools, items: merged}, nil
+	committed, err := policy.LoadProjectAcks(root)
+	if err != nil {
+		return project{}, err
+	}
+	acks := policy.Acks{}.WithProject(committed, merged.Items)
+	return project{root: root, tools: tools, items: merged, acks: acks}, nil
 }
 
 func loadTools(root string) ([]adapter.ToolID, error) {
@@ -108,10 +116,21 @@ func (p project) export() (export, error) {
 			return export{}, fmt.Errorf("export %s: %w", tool, err)
 		}
 		out.units = append(out.units, units...)
-		out.unsupported = append(out.unsupported, unsupported...)
+		for _, u := range unsupported {
+			out.unsupported = append(out.unsupported, p.acknowledge(u, tool))
+		}
 	}
-	hideLiteralSecrets(out.units, p.items.Items)
+	out.literals = literalSecrets(p.items.Items)
+	hide(out.units, out.literals)
 	return out, nil
+}
+
+func (p project) acknowledge(u adapter.Unsupported, tool adapter.ToolID) adapter.Unsupported {
+	at := slices.IndexFunc(p.items.Items, func(it library.Item) bool { return it.ID == u.ItemID })
+	if at < 0 {
+		return u
+	}
+	return p.acks.Acknowledge(u, p.items.Items[at], cmp.Or(u.Tool, tool))
 }
 
 func emptyEnv(home string) paths.Env {
@@ -123,21 +142,4 @@ func emptyEnv(home string) paths.Env {
 			return "", &exec.Error{Name: name, Err: exec.ErrNotFound}
 		},
 	}.WithBaseDirs()
-}
-
-func hideLiteralSecrets(units []plan.Unit, items []library.Item) {
-	holding := map[library.ID]bool{}
-	for _, it := range items {
-		if it.MCP == nil {
-			continue
-		}
-		if _, found := secrets.Scrub(*it.MCP); len(found) > 0 {
-			holding[it.ID] = true
-		}
-	}
-	for i := range units {
-		if slices.ContainsFunc(units[i].Items, func(id library.ID) bool { return holding[id] }) {
-			units[i].Secret = true
-		}
-	}
 }
