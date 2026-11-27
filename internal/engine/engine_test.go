@@ -301,9 +301,10 @@ func TestAgentsMDAddedForAnyProjectTool(t *testing.T) {
 		t.Run(tool, func(t *testing.T) {
 			env := home(t)
 			project := t.TempDir()
+			writeFile(t, filepath.Join(project, ".promptstor", "rules", "project-rule.md"), "---\nname: Project rule\npromptstor:\n  id: ps_0000000000000000000000PRJ1\n---\nProject wording.\n")
 			p := mustPlan(t, newEngine(env, tool), project)
 			c, found := changeFor(p, filepath.Join(project, "AGENTS.md"))
-			if !found || c.Op != plan.OpCreate || !bytes.Contains(c.After, []byte("Write in plain language.")) {
+			if !found || c.Op != plan.OpCreate || !bytes.Contains(c.After, []byte("Project wording.")) {
 				t.Errorf("AGENTS.md found %v op %s blocked %q", found, c.Op, c.Blocked)
 			}
 		})
@@ -313,7 +314,7 @@ func TestAgentsMDAddedForAnyProjectTool(t *testing.T) {
 func TestAgentsMDReceivesItemsUnfilteredByTool(t *testing.T) {
 	env := home(t)
 	project := t.TempDir()
-	writeFile(t, filepath.Join(env.LibraryDir(), "rules", "cursor-only.md"), "---\nname: Cursor only\npromptstor:\n  id: ps_0000000000000000000000CUR1\n  targets:\n    include:\n      - cursor\n---\nCursor wording.\n")
+	writeFile(t, filepath.Join(project, ".promptstor", "rules", "cursor-only.md"), "---\nname: Cursor only\npromptstor:\n  id: ps_0000000000000000000000CUR1\n  targets:\n    include:\n      - cursor\n---\nCursor wording.\n")
 	claude := &recording{id: adapter.ClaudeCode}
 	agents := &recording{id: adapter.AgentsMD}
 	e := newEngine(env, adapter.ClaudeCode)
@@ -706,6 +707,11 @@ func TestSyncThenRestoreReturnsOriginalTree(t *testing.T) {
 func TestSkillWrittenToEveryHomeIdentically(t *testing.T) {
 	env := home(t)
 	project := t.TempDir()
+	skill, err := os.ReadFile(filepath.Join(env.LibraryDir(), "skills", "release-notes", "SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(project, ".promptstor", "skills", "release-notes", "SKILL.md"), string(skill))
 	e := newEngine(env, allTools...)
 	for _, tool := range allTools {
 		e.Acks.Add(policy.Ack{ItemID: permissionID, Tool: tool, Hash: library.ContentHash(itemByID(t, e, permissionID))})
@@ -898,6 +904,74 @@ func TestEditGuardsInstallAtUserScopeOnly(t *testing.T) {
 	for _, c := range p.Changes {
 		if strings.HasPrefix(c.Path, project) && bytes.Contains(c.After, []byte("promptstor hook")) {
 			t.Errorf("project file %s gets the edit guard", c.Path)
+		}
+	}
+}
+
+func scopeFixture(t *testing.T) (engine.Engine, string) {
+	t.Helper()
+	env := home(t)
+	project := t.TempDir()
+	writeFile(t, filepath.Join(env.DeviceDir(), "rules", "device-rule.md"), "---\nname: Device rule\npromptstor:\n  id: ps_0000000000000000000000DEV1\n---\nDevice only wording.\n")
+	writeFile(t, filepath.Join(project, ".promptstor", "rules", "project-rule.md"), "---\nname: Project rule\npromptstor:\n  id: ps_0000000000000000000000PRJ1\n---\nProject only wording.\n")
+	e := newEngine(env, adapter.ClaudeCode, adapter.Codex)
+	e.Builtins = []library.Item{
+		{ID: "ps_0000000000000000000000CMP1", Kind: library.KindRule, Name: "Company rule", Layer: library.LayerCompany, Body: "Company wording.\n"},
+		library.PromptstorMCP("/opt/promptstor/bin/promptstor"),
+	}
+	return e, project
+}
+
+func contentUnder(p engine.Plan, root string) string {
+	var all strings.Builder
+	for _, c := range p.Changes {
+		if strings.HasPrefix(c.Path, root+string(filepath.Separator)) {
+			all.Write(c.After)
+		}
+	}
+	return all.String()
+}
+
+func TestProjectScopeExcludesPersonalAndDevice(t *testing.T) {
+	e, project := scopeFixture(t)
+	p := mustPlan(t, e, project)
+	files := contentUnder(p, project)
+	for _, want := range []string{"Project only wording.", "Company wording."} {
+		if !strings.Contains(files, want) {
+			t.Errorf("project files lack %q", want)
+		}
+	}
+	for _, leaked := range []string{"Write in plain language.", "Device only wording.", "/opt/promptstor/bin/promptstor", "release-notes"} {
+		if strings.Contains(files, leaked) {
+			t.Errorf("project files carry %q", leaked)
+		}
+	}
+}
+
+func TestUserScopeExcludesProjectLayer(t *testing.T) {
+	e, project := scopeFixture(t)
+	p := mustPlan(t, e, project)
+	files := contentUnder(p, e.Env.Home)
+	for _, want := range []string{"Write in plain language.", "Device only wording.", "Company wording.", "/opt/promptstor/bin/promptstor"} {
+		if !strings.Contains(files, want) {
+			t.Errorf("user files lack %q", want)
+		}
+	}
+	if strings.Contains(files, "Project only wording.") {
+		t.Error("user files carry the project rule")
+	}
+}
+
+func TestLibraryStillMergesEveryLayerForDisplay(t *testing.T) {
+	e, project := scopeFixture(t)
+	merged, _, err := e.Library(project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := ids(merged.Items)
+	for _, want := range []library.ID{ruleID, "ps_0000000000000000000000DEV1", "ps_0000000000000000000000PRJ1", "ps_0000000000000000000000CMP1"} {
+		if !slices.Contains(got, want) {
+			t.Errorf("merge lacks %s", want)
 		}
 	}
 }

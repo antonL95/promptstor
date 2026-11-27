@@ -24,11 +24,11 @@ func (e Engine) ResolveSecret(tool, path, key string) ([]byte, error) {
 		roots = append(roots, root)
 	}
 	for _, projectRoot := range roots {
-		merged, _, err := e.Library(projectRoot)
+		lib, err := e.scoped(projectRoot)
 		if err != nil {
 			return nil, err
 		}
-		d, err := e.desired(projectRoot, merged, m)
+		d, err := e.desired(projectRoot, lib, m)
 		if err != nil {
 			return nil, err
 		}

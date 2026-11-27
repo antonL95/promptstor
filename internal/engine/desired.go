@@ -42,7 +42,7 @@ func (e Engine) Targets(projectRoot string) ([]adapter.Target, error) {
 	return append(targets, adapter.Target{Env: e.Env, Scope: adapter.ScopeProject, ProjectRoot: projectRoot, Selected: selected}), nil
 }
 
-func (e Engine) desired(projectRoot string, merged library.Merged, m manifest.Manifest) (desired, error) {
+func (e Engine) desired(projectRoot string, lib scopedLibrary, m manifest.Manifest) (desired, error) {
 	targets, err := e.Targets(projectRoot)
 	if err != nil {
 		return desired{}, err
@@ -52,6 +52,7 @@ func (e Engine) desired(projectRoot string, merged library.Merged, m manifest.Ma
 		d.roots[projectRoot] = true
 	}
 	for _, t := range targets {
+		merged := lib.scopes[t.Scope]
 		for _, tool := range t.Selected {
 			a, err := e.adapterFor(tool)
 			if err != nil {

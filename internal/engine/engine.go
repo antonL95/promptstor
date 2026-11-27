@@ -45,7 +45,41 @@ type Plan struct {
 	LibraryHash string
 }
 
+var scopeLayers = map[adapter.Scope][]library.Layer{
+	adapter.ScopeUser:    {library.LayerCompany, library.LayerTeam, library.LayerPersonal, library.LayerDevice},
+	adapter.ScopeProject: {library.LayerCompany, library.LayerTeam, library.LayerProject},
+}
+
+type scopedLibrary struct {
+	full       library.Merged
+	violations []library.Violation
+	scopes     map[adapter.Scope]library.Merged
+}
+
 func (e Engine) Library(projectRoot string) (library.Merged, []library.Violation, error) {
+	layers, err := e.layers(projectRoot)
+	if err != nil {
+		return library.Merged{}, nil, err
+	}
+	merged, violations := library.Merge(layers)
+	return merged, violations, nil
+}
+
+func (e Engine) scoped(projectRoot string) (scopedLibrary, error) {
+	layers, err := e.layers(projectRoot)
+	if err != nil {
+		return scopedLibrary{}, err
+	}
+	s := scopedLibrary{scopes: map[adapter.Scope]library.Merged{}}
+	s.full, s.violations = library.Merge(layers)
+	for scope, allowed := range scopeLayers {
+		kept := slices.DeleteFunc(slices.Clone(layers), func(l library.LayerItems) bool { return !slices.Contains(allowed, l.Layer) })
+		s.scopes[scope], _ = library.Merge(kept)
+	}
+	return s, nil
+}
+
+func (e Engine) layers(projectRoot string) ([]library.LayerItems, error) {
 	sources := []struct {
 		dir   string
 		layer library.Layer
@@ -63,13 +97,11 @@ func (e Engine) Library(projectRoot string) (library.Merged, []library.Violation
 	for _, source := range sources {
 		items, err := library.LoadLayer(source.dir, source.layer, library.LoadOptions{})
 		if err != nil {
-			return library.Merged{}, nil, fmt.Errorf("load %s layer: %w", source.layer, err)
+			return nil, fmt.Errorf("load %s layer: %w", source.layer, err)
 		}
 		layers = append(layers, library.LayerItems{Layer: source.layer, Items: items})
 	}
-	layers = append(layers, builtinLayers(e.Builtins)...)
-	merged, violations := library.Merge(layers)
-	return merged, violations, nil
+	return append(layers, builtinLayers(e.Builtins)...), nil
 }
 
 func builtinLayers(builtins []library.Item) []library.LayerItems {
@@ -123,7 +155,7 @@ func (e Engine) now() time.Time {
 }
 
 func (e Engine) plan(projectRoot string, opt plan.Options) (Plan, manifest.Manifest, error) {
-	merged, violations, err := e.Library(projectRoot)
+	lib, err := e.scoped(projectRoot)
 	if err != nil {
 		return Plan{}, manifest.Manifest{}, err
 	}
@@ -131,7 +163,7 @@ func (e Engine) plan(projectRoot string, opt plan.Options) (Plan, manifest.Manif
 	if err != nil {
 		return Plan{}, manifest.Manifest{}, err
 	}
-	d, err := e.desired(projectRoot, merged, m)
+	d, err := e.desired(projectRoot, lib, m)
 	if err != nil {
 		return Plan{}, m, err
 	}
@@ -147,8 +179,8 @@ func (e Engine) plan(projectRoot string, opt plan.Options) (Plan, manifest.Manif
 	return Plan{
 		Changes:     changes,
 		Unsupported: d.report(),
-		Violations:  violations,
-		LibraryHash: merged.Hash(),
+		Violations:  lib.violations,
+		LibraryHash: lib.full.Hash(),
 	}, m, nil
 }
 

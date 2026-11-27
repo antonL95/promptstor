@@ -64,8 +64,13 @@ func (s *server) removePersonal(in removeInput) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if shown := find(before.Items, id); shown != nil && shown.Layer == library.LayerDevice {
-		return nil, fmt.Errorf("the device layer holds %s: %w", id, errOnlyPersonal)
+	if shown := find(before.Items, id); shown != nil {
+		switch shown.Layer {
+		case library.LayerDevice:
+			return nil, fmt.Errorf("the device layer holds %s: %w", id, errOnlyPersonal)
+		case library.LayerProject:
+			return nil, fmt.Errorf("%s comes from the project layer; remove it with layer project", id)
+		}
 	}
 	view := changeView{Layer: string(library.LayerPersonal), ID: id}
 	if current := find(personal, id); current != nil {
@@ -85,7 +90,7 @@ func (s *server) removePersonal(in removeInput) (any, error) {
 	switch {
 	case inherited == nil && view.Name == "":
 		return nil, fmt.Errorf("no item with id %s", id)
-	case inherited != nil:
+	case inherited != nil && inherited.Layer != library.LayerProject:
 		path, err := library.WriteItem(dir, tombstone(*inherited))
 		if err != nil {
 			return nil, err

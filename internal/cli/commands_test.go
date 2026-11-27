@@ -175,6 +175,7 @@ func TestSyncUsesInjectedRunnerForSecrets(t *testing.T) {
 func TestSyncProjectFlagResolvesRelativePath(t *testing.T) {
 	env := cliHome(t)
 	project := t.TempDir()
+	writeFile(t, filepath.Join(project, ".promptstor", "rules", "project-rule.md"), "---\nname: Project rule\npromptstor:\n  id: ps_0000000000000000000000PRJ1\n---\nProject wording.\n")
 	t.Chdir(project)
 
 	out := mustRun(t, deps(env), "sync", "--dry-run", "--project", ".")

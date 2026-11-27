@@ -20,6 +20,7 @@ import (
 	"github.com/antonL95/promptstor/internal/library"
 	"github.com/antonL95/promptstor/internal/mcpserver"
 	"github.com/antonL95/promptstor/internal/paths"
+	"github.com/antonL95/promptstor/internal/plan"
 	"github.com/antonL95/promptstor/internal/testenv"
 )
 
@@ -28,6 +29,7 @@ const (
 	skillID   library.ID = "ps_0000000000000000000000MCP2"
 	serverID  library.ID = "ps_0000000000000000000000MCP3"
 	companyID library.ID = "ps_0000000000000000000000CMP1"
+	projectID library.ID = "ps_0000000000000000000000PRJ1"
 )
 
 type runner func(dir, name string, args ...string) ([]byte, error)
@@ -556,6 +558,95 @@ func TestRemoveProjectItemCreatesBranch(t *testing.T) {
 	}
 	if status := git(t, repo, "status", "--porcelain"); status != "" {
 		t.Errorf("working tree not clean:\n%s", status)
+	}
+}
+
+func TestProjectBranchMatchesLocalProjectSync(t *testing.T) {
+	env := home(t)
+	repo := newRepo(t)
+	e := newEngine(env)
+	e.Config.Tools = []string{adapter.ClaudeCode, adapter.Codex}
+	e.Builtins = []library.Item{library.EditGuard(adapter.ClaudeCode, "/opt/promptstor/bin/promptstor"), library.PromptstorMCP("/opt/promptstor/bin/promptstor")}
+	var calls [][]string
+	cs := connect(t, e, gitRunner(t, &calls, nil))
+	var result changeResult
+	mustCall(t, cs, "promptstor_upsert", projectUpsert(repo), &result)
+
+	local := t.TempDir()
+	git(t, local, "clone", "-q", repo, ".")
+	git(t, local, "checkout", "-q", "origin/"+result.Branch, "--", ".promptstor")
+	if _, _, err := e.Sync(local, plan.Options{}); err != nil {
+		t.Fatal(err)
+	}
+	git(t, local, "add", "-A")
+
+	if diff := git(t, local, "diff", "--cached", "origin/"+result.Branch); diff != "" {
+		t.Errorf("a local sync --project differs from the branch:\n%s", diff)
+	}
+}
+
+func projectWithRule(t *testing.T) string {
+	t.Helper()
+	project := t.TempDir()
+	path := filepath.Join(project, ".promptstor", "rules", "project-rule.md")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	content := "---\nname: Project rule\ndescription: Shared PROJECT conventions\npromptstor:\n  id: " + string(projectID) + "\n---\nUse the shared formatter.\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return project
+}
+
+func TestListIncludesProjectItemsWithProjectDir(t *testing.T) {
+	project := projectWithRule(t)
+	cs := connect(t, newEngine(home(t)), noCommands)
+
+	var entries []listed
+	mustCall(t, cs, "promptstor_list", map[string]any{"project_dir": project, "layer": "project"}, &entries)
+	if len(entries) != 1 || entries[0].ID != projectID || entries[0].Layer != "project" {
+		t.Errorf("project entries %+v", entries)
+	}
+	if got := listIDs(t, cs, map[string]any{"project_dir": project}); !slices.Contains(got, projectID) || !slices.Contains(got, ruleID) {
+		t.Errorf("with project_dir %v", got)
+	}
+	if got := listIDs(t, cs, map[string]any{}); slices.Contains(got, projectID) {
+		t.Errorf("without project_dir %v", got)
+	}
+}
+
+func TestGetAndSearchSeeProjectItemsWithProjectDir(t *testing.T) {
+	project := projectWithRule(t)
+	cs := connect(t, newEngine(home(t)), noCommands)
+
+	var rule map[string]any
+	mustCall(t, cs, "promptstor_get", map[string]any{"id": string(projectID), "project_dir": project}, &rule)
+	if rule["layer"] != "project" || rule["body"] != "Use the shared formatter.\n" {
+		t.Errorf("rule %v", rule)
+	}
+	if _, isError := call(t, cs, "promptstor_get", map[string]any{"id": string(projectID)}); !isError {
+		t.Error("project item found without project_dir")
+	}
+
+	var found []listed
+	mustCall(t, cs, "promptstor_search", map[string]any{"query": "shared project", "project_dir": project}, &found)
+	if len(found) != 1 || found[0].ID != projectID || found[0].Layer != "project" {
+		t.Errorf("search %+v", found)
+	}
+}
+
+func TestRemovePersonalRefusesProjectItem(t *testing.T) {
+	env := home(t)
+	project := projectWithRule(t)
+	cs := connect(t, newEngine(env), noCommands)
+
+	text, isError := call(t, cs, "promptstor_remove", map[string]any{"layer": "personal", "id": string(projectID), "project_dir": project})
+	if !isError || !strings.Contains(text, "project layer") {
+		t.Errorf("isError %v text %q", isError, text)
+	}
+	if exists(filepath.Join(env.LibraryDir(), "rules", "project-rule.md")) {
+		t.Error("a tombstone was written for a project item")
 	}
 }
 

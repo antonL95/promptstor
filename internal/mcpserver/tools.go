@@ -13,26 +13,33 @@ import (
 )
 
 type listInput struct {
-	Layer string `json:"layer,omitempty" jsonschema:"only items from this layer: company, team, project, personal or device"`
-	Kind  string `json:"kind,omitempty" jsonschema:"only items of this kind: rule, skill, command, subagent, permission, hook or mcp"`
-	Tool  string `json:"tool,omitempty" jsonschema:"only items written to this tool, such as claude-code or codex"`
+	Layer      string `json:"layer,omitempty" jsonschema:"only items from this layer: company, team, project, personal or device"`
+	Kind       string `json:"kind,omitempty" jsonschema:"only items of this kind: rule, skill, command, subagent, permission, hook or mcp"`
+	Tool       string `json:"tool,omitempty" jsonschema:"only items written to this tool, such as claude-code or codex"`
+	ProjectDir string `json:"project_dir,omitempty" jsonschema:"also include the project layer of the project in this directory"`
 }
 
 type getInput struct {
-	ID   string `json:"id,omitempty" jsonschema:"the item id"`
-	Name string `json:"name,omitempty" jsonschema:"the item name, used when no id is given"`
+	ID         string `json:"id,omitempty" jsonschema:"the item id"`
+	Name       string `json:"name,omitempty" jsonschema:"the item name, used when no id is given"`
+	ProjectDir string `json:"project_dir,omitempty" jsonschema:"also include the project layer of the project in this directory"`
 }
 
 type searchInput struct {
-	Query string `json:"query" jsonschema:"text to find in the name, description or body"`
+	Query      string `json:"query" jsonschema:"text to find in the name, description or body"`
+	ProjectDir string `json:"project_dir,omitempty" jsonschema:"also include the project layer of the project in this directory"`
 }
 
 type statusInput struct {
 	ProjectDir string `json:"project_dir,omitempty" jsonschema:"also check the project in this directory"`
 }
 
-func (s *server) items() ([]library.Item, error) {
-	merged, _, err := s.e.Library("")
+func (s *server) items(projectDir string) ([]library.Item, error) {
+	root, err := projectRoot(projectDir)
+	if err != nil {
+		return nil, err
+	}
+	merged, _, err := s.e.Library(root)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +47,7 @@ func (s *server) items() ([]library.Item, error) {
 }
 
 func (s *server) list(in listInput) (any, error) {
-	items, err := s.items()
+	items, err := s.items(in.ProjectDir)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +61,7 @@ func (s *server) list(in listInput) (any, error) {
 }
 
 func (s *server) get(in getInput) (any, error) {
-	items, err := s.items()
+	items, err := s.items(in.ProjectDir)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +101,7 @@ func (s *server) search(in searchInput) (any, error) {
 	if query == "" {
 		return nil, errors.New("the query is empty")
 	}
-	items, err := s.items()
+	items, err := s.items(in.ProjectDir)
 	if err != nil {
 		return nil, err
 	}

@@ -442,6 +442,7 @@ func TestCheckHandEdit(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			env := home(t)
 			project := t.TempDir()
+			writeFile(t, filepath.Join(project, ".promptstor", "rules", "project-rule.md"), "---\nname: Project rule\npromptstor:\n  id: ps_0000000000000000000000PRJ1\n---\nProject wording.\n")
 			e := newEngine(env, tc.tools...)
 			mustSync(t, e, project)
 			tc.edit(t, env, project)
