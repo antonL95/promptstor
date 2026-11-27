@@ -17,7 +17,7 @@ import (
 
 const (
 	acknowledgedPrefix = "acknowledged: "
-	reasonNeedsSetup   = "needs manual setup: "
+	ReasonNeedsSetup   = "needs manual setup: "
 	reasonUnresolved   = "secret not resolved: "
 )
 
@@ -127,7 +127,7 @@ func (e Engine) prepareServers(x *toolExport, items []library.Item, envRef func(
 		case err != nil:
 			unsupported.Reason = reasonUnresolved + err.Error()
 		case len(needsSetup) > 0:
-			unsupported.Reason = reasonNeedsSetup + strings.Join(needsSetup, ", ")
+			unsupported.Reason = ReasonNeedsSetup + strings.Join(needsSetup, ", ")
 		default:
 			it.MCP = &out
 			if len(secretKeys) > 0 {

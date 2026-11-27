@@ -22,7 +22,7 @@ type desired struct {
 	roots       map[string]bool
 }
 
-func (e Engine) targets(projectRoot string) ([]adapter.Target, error) {
+func (e Engine) Targets(projectRoot string) ([]adapter.Target, error) {
 	targets := []adapter.Target{{Env: e.Env, Scope: adapter.ScopeUser, Selected: sortedSet(e.Config.Tools)}}
 	if projectRoot == "" {
 		return targets, nil
@@ -43,7 +43,7 @@ func (e Engine) targets(projectRoot string) ([]adapter.Target, error) {
 }
 
 func (e Engine) desired(projectRoot string, merged library.Merged, m manifest.Manifest) (desired, error) {
-	targets, err := e.targets(projectRoot)
+	targets, err := e.Targets(projectRoot)
 	if err != nil {
 		return desired{}, err
 	}

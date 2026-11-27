@@ -20,8 +20,8 @@ import (
 const (
 	reasonNoRoot     = "no root known for this file"
 	reasonUnmanaged  = "not created by promptstor"
-	reasonConflict   = "shared file conflict: "
-	reasonSymlinked  = "symlinked -> "
+	ReasonConflict   = "shared file conflict: "
+	ReasonSymlinked  = "symlinked -> "
 	reasonNotRegular = "not a regular file"
 )
 
@@ -61,7 +61,7 @@ func Diff(desired []Unit, m manifest.Manifest, tools []string, opt Options) ([]F
 		draft.root = merged.Root
 		draft.units = append(draft.units, merged)
 		if conflict && draft.blocked == "" {
-			draft.blocked = reasonConflict + strings.Join(toolsOf(groups[key]), ", ")
+			draft.blocked = ReasonConflict + strings.Join(toolsOf(groups[key]), ", ")
 		}
 	}
 	for _, e := range m.Entries {
@@ -170,7 +170,7 @@ func blockMixedFile(draft *fileDraft) {
 		return
 	}
 	if slices.ContainsFunc(draft.units, func(u Unit) bool { return u.Kind == manifest.UnitFile }) {
-		draft.blocked = reasonConflict + strings.Join(toolsOf(draft.units), ", ")
+		draft.blocked = ReasonConflict + strings.Join(toolsOf(draft.units), ", ")
 	}
 }
 
@@ -234,7 +234,7 @@ func checkLinks(c *FileChange, consented []string) string {
 	if err != nil {
 		return err.Error()
 	}
-	reason := reasonSymlinked + entry.LinkTarget
+	reason := ReasonSymlinked + entry.LinkTarget
 	if link != c.Path {
 		return reason + " (parent directory " + link + ")"
 	}

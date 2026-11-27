@@ -57,7 +57,7 @@ func (e *editor) remove(entry manifest.Entry) string {
 
 func (e *editor) apply(u Unit) string {
 	present := e.exists && !e.deleted
-	current, found, err := extractUnit(u.Kind, e.doc, u.Key, present)
+	current, found, err := ExtractUnit(u.Kind, e.doc, u.Key, present)
 	if err != nil {
 		return err.Error()
 	}
@@ -117,7 +117,7 @@ func sameEntry(entry manifest.Entry, u Unit, hash string) bool {
 	return entry.Hash == hash && entry.Tool == u.Tool && slices.Equal(entry.Items, u.Items) && entry.Secret == u.Secret
 }
 
-func extractUnit(kind manifest.UnitKind, doc []byte, key string, present bool) ([]byte, bool, error) {
+func ExtractUnit(kind manifest.UnitKind, doc []byte, key string, present bool) ([]byte, bool, error) {
 	if !present {
 		return nil, false, nil
 	}

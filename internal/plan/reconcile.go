@@ -43,7 +43,7 @@ func readOwned(path string) ([]byte, bool, error) {
 }
 
 func stillOwned(e manifest.Entry, doc []byte, present bool) bool {
-	current, found, err := extractUnit(e.Unit, doc, e.Key, present)
+	current, found, err := ExtractUnit(e.Unit, doc, e.Key, present)
 	if err != nil || !found {
 		return false
 	}
