@@ -806,3 +806,81 @@ func TestSyncAfterRestoreWritesAgain(t *testing.T) {
 		t.Error("second sync did not reproduce the first")
 	}
 }
+
+func TestRestoreReconcilesManifest(t *testing.T) {
+	env := home(t)
+	e := newEngine(env, adapter.ClaudeCode, adapter.Codex)
+	e.Acks.Add(policy.Ack{ItemID: permissionID, Tool: adapter.Codex, Hash: library.ContentHash(itemByID(t, e, permissionID))})
+	first, _, err := e.Sync("", plan.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	synced := testenv.TreeHash(t, env.Home)
+	before, err := manifest.Load(env.ManifestPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	restored, err := e.Restore(first.SnapshotID, adapter.Codex, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	after, err := manifest.Load(env.ManifestPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	restoredPaths := map[string]bool{}
+	for _, f := range restored.Snapshot.Files {
+		if slices.Contains(strings.Split(f.Tool, ","), adapter.Codex) {
+			restoredPaths[f.Path] = true
+		}
+	}
+	for _, entry := range after.Entries {
+		if restoredPaths[entry.Path] {
+			t.Errorf("entry for restored %s %s kept", entry.Path, entry.Key)
+		}
+	}
+	for _, entry := range before.Entries {
+		if !restoredPaths[entry.Path] && !slices.ContainsFunc(after.Entries, func(a manifest.Entry) bool { return a.Path == entry.Path && a.Key == entry.Key }) {
+			t.Errorf("entry for %s %s dropped although its file was not restored", entry.Path, entry.Key)
+		}
+	}
+
+	p := mustPlan(t, e, "")
+	for _, c := range p.Changes {
+		if len(c.Removed) > 0 || c.Blocked != "" {
+			t.Errorf("%s: removed %d blocked %q", c.Path, len(c.Removed), c.Blocked)
+		}
+	}
+	_, p, err = e.Sync("", plan.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range p.Changes {
+		if c.Blocked != "" {
+			t.Errorf("%s blocked: %s", c.Path, c.Blocked)
+		}
+	}
+	if testenv.TreeHash(t, env.Home) != synced {
+		t.Error("second sync did not write the restored files again")
+	}
+}
+
+func TestDryRunRestoreLeavesManifest(t *testing.T) {
+	env := home(t)
+	e := newEngine(env, adapter.ClaudeCode)
+	first, _, err := e.Sync("", plan.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := testenv.TreeHash(t, env.StateHome)
+
+	if _, err := e.Restore(first.SnapshotID, "", true); err != nil {
+		t.Fatal(err)
+	}
+
+	if testenv.TreeHash(t, env.StateHome) != before {
+		t.Error("dry run changed the state directory")
+	}
+}

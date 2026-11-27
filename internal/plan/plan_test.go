@@ -912,3 +912,29 @@ func TestDiffKeepsEntriesListedInKeep(t *testing.T) {
 		t.Errorf("dropped entry not removed: %+v", c.Removed)
 	}
 }
+
+func TestReconcileDropsEntriesNoLongerOnDisk(t *testing.T) {
+	env := home(t)
+	write(t, at(env, ".claude/skills/x/SKILL.md"), "skill\n")
+	write(t, at(env, ".claude/settings.json"), `{"model": "edited"}`+"\n")
+	matching := unit(env, adapter.ClaudeCode, ".claude/skills/x/SKILL.md", manifest.UnitFile, "", "skill\n")
+	edited := unit(env, adapter.ClaudeCode, ".claude/settings.json", manifest.UnitJSON, "/model", `"example-model"`)
+	missing := unit(env, adapter.ClaudeCode, ".claude/agents/gone.md", manifest.UnitFile, "", "gone\n")
+	untouched := unit(env, adapter.Codex, ".codex/config.toml", manifest.UnitTOMLTable, "mcp_servers.docs", "[mcp_servers.docs]\ncommand = \"docs-server\"\n")
+	var m manifest.Manifest
+	for _, u := range []plan.Unit{matching, edited, missing, untouched} {
+		m.Put(entryFor(t, u))
+	}
+
+	removed, err := plan.Reconcile(&m, []string{matching.Path, edited.Path, missing.Path})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if want := []manifest.Entry{entryFor(t, matching), entryFor(t, untouched)}; !reflect.DeepEqual(m.Entries, want) {
+		t.Errorf("kept %+v", m.Entries)
+	}
+	if len(removed) != 2 {
+		t.Errorf("removed %+v", removed)
+	}
+}

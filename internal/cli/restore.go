@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/antonL95/promptstor/internal/backup"
+	"github.com/antonL95/promptstor/internal/engine"
 )
 
 type restoreFlags struct {
@@ -28,14 +29,13 @@ func newRestoreCommand(d Deps) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			store := e.Backups()
 			if f.list {
-				return listSnapshots(cmd.OutOrStdout(), store)
+				return listSnapshots(cmd.OutOrStdout(), e.Backups())
 			}
 			if len(args) != 1 {
 				return errors.New("name a snapshot, or list them with --list")
 			}
-			return runRestore(cmd.OutOrStdout(), store, args[0], f)
+			return runRestore(cmd.OutOrStdout(), e, args[0], f)
 		},
 	}
 	cmd.Flags().BoolVar(&f.list, "list", false, "list snapshots, newest first")
@@ -60,8 +60,8 @@ func listSnapshots(out io.Writer, store backup.Store) error {
 	return w.done()
 }
 
-func runRestore(out io.Writer, store backup.Store, id string, f restoreFlags) error {
-	restored, err := store.Restore(id, f.tool, f.dryRun)
+func runRestore(out io.Writer, e engine.Engine, id string, f restoreFlags) error {
+	restored, err := e.Restore(id, f.tool, f.dryRun)
 	w := &printer{w: out}
 	if restored.PreRestoreID != "" {
 		w.printf("pre-restore snapshot %s (undo with: promptstor restore %s)\n", restored.PreRestoreID, restored.PreRestoreID)

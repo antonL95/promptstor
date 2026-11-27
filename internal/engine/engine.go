@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/antonL95/promptstor/internal/adapter"
 	_ "github.com/antonL95/promptstor/internal/adapter/all"
 	"github.com/antonL95/promptstor/internal/backup"
 	"github.com/antonL95/promptstor/internal/config"
+	"github.com/antonL95/promptstor/internal/fsx"
 	"github.com/antonL95/promptstor/internal/library"
 	"github.com/antonL95/promptstor/internal/manifest"
 	"github.com/antonL95/promptstor/internal/paths"
@@ -156,4 +158,38 @@ func (e Engine) adapterFor(tool string) (adapter.Adapter, error) {
 		}
 	}
 	return nil, fmt.Errorf("unknown tool %q", tool)
+}
+
+func (e Engine) Restore(id, tool string, dryRun bool) (backup.RestorePlan, error) {
+	restored, err := e.Backups().Restore(id, tool, dryRun)
+	if err != nil || dryRun {
+		return restored, err
+	}
+	var paths []string
+	for _, f := range restored.Snapshot.Files {
+		if tool == "" || slices.Contains(strings.Split(f.Tool, ","), tool) {
+			paths = append(paths, f.Path)
+		}
+	}
+	if err := e.reconcile(paths); err != nil {
+		return restored, fmt.Errorf("reconcile manifest after restore: %w", err)
+	}
+	return restored, nil
+}
+
+func (e Engine) reconcile(paths []string) error {
+	release, err := fsx.Acquire(e.Env.LockPath(), lockWait)
+	if err != nil {
+		return err
+	}
+	defer release()
+	m, err := manifest.Load(e.Env.ManifestPath())
+	if err != nil {
+		return err
+	}
+	removed, err := plan.Reconcile(&m, paths)
+	if err != nil || len(removed) == 0 {
+		return err
+	}
+	return m.Save(e.Env.ManifestPath())
 }
