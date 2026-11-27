@@ -1,0 +1,8 @@
+promptstor:
+  id: ps_00000000000000000000000C14
+description: Synthetic documentation server
+transport: stdio
+command: example-docs-server
+env:
+  EXAMPLE_TOKEN:
+    ref: env:EXAMPLE_TOKEN

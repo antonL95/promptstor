@@ -31,6 +31,6 @@ func NewRoot(d Deps) *cobra.Command {
 	root.SetIn(d.Stdin)
 	root.SetOut(d.Stdout)
 	root.SetErr(d.Stderr)
-	root.AddCommand(newVersionCommand(), newSyncCommand(d), newRestoreCommand(d), newStatusCommand(d), newHookCommand(d), newMCPCommand(d), newDoctorCommand(d))
+	root.AddCommand(newVersionCommand(), newSyncCommand(d), newRestoreCommand(d), newStatusCommand(d), newHookCommand(d), newMCPCommand(d), newDoctorCommand(d), newCheckCommand())
 	return root
 }
