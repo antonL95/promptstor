@@ -29,6 +29,7 @@ const (
 
 	reasonNoProfile    = "Codex path denies need default_permissions, which PromptStor cannot set"
 	reasonOwnProfile   = "[permissions.promptstor] holds settings PromptStor does not write"
+	reasonUnconfirmed  = "Codex profile denies are not confirmed to cover apply_patch and built-in file tools"
 	reasonDenyCommand  = "deny command %q cannot be written as a Codex prefix_rule, which matches whole words"
 	reasonDenyPath     = "deny path %q cannot be written in a Codex permission profile"
 	reasonBarePath     = "deny path %q would match only at the workspace root in Codex; write it as **/%s"
@@ -119,9 +120,6 @@ func argv(command string) ([]string, bool) {
 }
 
 func (ex *exporter) profile(items []library.Item) error {
-	if len(items) == 0 {
-		return nil
-	}
 	reason, err := ex.profileObstacle()
 	if err != nil {
 		return err
@@ -136,8 +134,10 @@ func (ex *exporter) profile(items []library.Item) error {
 	for _, it := range items {
 		ex.collectPaths(it, &collected)
 	}
-	if len(collected.items) == 0 {
-		return nil
+	for _, it := range items {
+		if slices.Contains(collected.items, it.ID) {
+			ex.block(it, reasonUnconfirmed)
+		}
 	}
 	ex.add(plan.Unit{
 		Path:    ex.l.in(configName),

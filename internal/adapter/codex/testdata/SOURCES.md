@@ -56,6 +56,6 @@ Checked on 2026-11-27 against Codex CLI 0.172.0. Docs under `developers.openai.c
 
 ## Still unconfirmed
 
-- Whether a profile `deny` is enforced for `apply_patch` and built in file read tools, not only for sandboxed shell commands. PERM documents deny paths for the sandbox.
+- Whether a profile `deny` is enforced for `apply_patch` and built in file read tools, not only for sandboxed shell commands. PERM documents deny paths for the sandbox. Every path deny therefore reports a blocking result that needs acknowledgement. While `default_permissions = "promptstor"` and the other conditions hold, `[permissions.promptstor]` is always written, with no entries if needed, so the root key never names a missing profile.
 - `/etc/codex/config.toml` and managed configuration can also set `sandbox_mode`. The adapter checks only the user and project `config.toml`.
 - Whether the desktop app or IDE extension still reads `~/.codex/prompts`.

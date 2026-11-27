@@ -28,6 +28,9 @@ const (
 	projectMarker = "<project>"
 	overrideNote  = "overrides AGENTS.md; PromptStor rules are not loaded"
 	profileReason = "Codex path denies need default_permissions, which PromptStor cannot set"
+
+	unconfirmedReason = "Codex profile denies are not confirmed to cover apply_patch and built-in file tools"
+	bareProfile       = "[permissions.promptstor]\nextends = \":workspace\""
 )
 
 func registered(t *testing.T) adapter.Adapter {
@@ -519,7 +522,7 @@ func TestPathDenyProfileWhenSandboxUnset(t *testing.T) {
 	tg := profileTarget(t, "default_permissions = \"promptstor\"\n")
 	items := []library.Item{guard(nil, []string{"**/.env", "/etc/example/**", "~/.ssh/**", "secrets/key.pem"})}
 	units, unsupported := export(t, tg, items)
-	if len(units) != 1 || len(unsupported) != 0 {
+	if len(units) != 1 || len(unsupported) != 1 {
 		t.Fatalf("units %s unsupported %+v", describe(tg, units), unsupported)
 	}
 	testenv.Golden(t, "testdata/golden/permissions-profile.toml", units[0].Content)
@@ -536,7 +539,7 @@ func TestPathDenyProfileWhenSandboxUnset(t *testing.T) {
 	}
 	write(t, changes[0].Path, string(changes[0].After))
 	units, unsupported = export(t, tg, items)
-	if len(unsupported) != 0 || diff(t, units)[0].Op != plan.OpNoop {
+	if len(unsupported) != 1 || diff(t, units)[0].Op != plan.OpNoop {
 		t.Errorf("second export is not a noop, unsupported %+v", unsupported)
 	}
 }
@@ -574,7 +577,7 @@ func TestProjectPathDenyBlockedByUserSandboxMode(t *testing.T) {
 	}
 	write(t, filepath.Join(tg.Env.Home, ".codex", "config.toml"), "model = \"example-model\"\n")
 	units, unsupported = export(t, tg, items)
-	if len(units) != 1 || len(unsupported) != 0 || units[0].Path != filepath.Join(tg.ProjectRoot, ".codex", "config.toml") {
+	if len(units) != 1 || len(unsupported) != 1 || unsupported[0].Reason != unconfirmedReason || units[0].Path != filepath.Join(tg.ProjectRoot, ".codex", "config.toml") {
 		t.Errorf("units %s unsupported %+v", describe(tg, units), unsupported)
 	}
 }
@@ -597,8 +600,88 @@ func TestInexpressibleDenyPathsBlocked(t *testing.T) {
 	for _, path := range []string{".env", "./secrets/**", "../outside/**", ":root", "a/../b", "!keep/me"} {
 		tg := profileTarget(t, "default_permissions = \"promptstor\"\n")
 		units, unsupported := export(t, tg, []library.Item{guard(nil, []string{path})})
-		if len(units) != 0 || len(unsupported) != 1 || !unsupported[0].Blocking {
+		if len(units) != 1 || string(units[0].Content) != bareProfile || len(unsupported) != 1 || !unsupported[0].Blocking {
 			t.Errorf("%q units %s unsupported %+v", path, describe(tg, units), unsupported)
+		}
+	}
+}
+
+func TestPathDenyAlwaysNeedsAck(t *testing.T) {
+	second := library.Item{ID: "ps_second", Kind: library.KindPermission, Name: "Keys", Portable: &library.PortablePermission{DenyPaths: []string{"~/.ssh/**"}}}
+	items := []library.Item{guard([]string{"rm -rf"}, []string{"**/.env"}), second}
+	blocking := func(reason string) []adapter.Unsupported {
+		return []adapter.Unsupported{
+			{ItemID: "ps_perm", Name: "Guard", Tool: adapter.Codex, Reason: reason, Blocking: true},
+			{ItemID: "ps_second", Name: "Keys", Tool: adapter.Codex, Reason: reason, Blocking: true},
+		}
+	}
+	profileUnits := func(units []plan.Unit) []plan.Unit {
+		return slices.DeleteFunc(slices.Clone(units), func(u plan.Unit) bool { return u.Key != "permissions.promptstor" })
+	}
+
+	tg := profileTarget(t, "default_permissions = \"promptstor\"\n")
+	units, unsupported := export(t, tg, items)
+	if !reflect.DeepEqual(unsupported, blocking(unconfirmedReason)) {
+		t.Errorf("unsupported %+v", unsupported)
+	}
+	profile := profileUnits(units)
+	if len(profile) != 1 || !reflect.DeepEqual(profile[0].Items, []library.ID{"ps_perm", "ps_second"}) {
+		t.Fatalf("units %s", describe(tg, units))
+	}
+	for _, path := range []string{"**/.env", "~/.ssh/**"} {
+		if !bytes.Contains(profile[0].Content, []byte(`"`+path+`" = "deny"`)) {
+			t.Errorf("%s not denied\n%s", path, profile[0].Content)
+		}
+	}
+
+	tg = profileTarget(t, "model = \"example-model\"\n")
+	units, unsupported = export(t, tg, items)
+	if !reflect.DeepEqual(unsupported, blocking(profileReason)) {
+		t.Errorf("unsupported %+v", unsupported)
+	}
+	if len(profileUnits(units)) != 0 {
+		t.Errorf("units %s", describe(tg, units))
+	}
+}
+
+func TestProfileKeptWhenNoDenyPathsRemain(t *testing.T) {
+	const previous = "default_permissions = \"promptstor\"\n\n[permissions.promptstor]\nextends = \":workspace\"\n\n[permissions.promptstor.filesystem.\":workspace_roots\"]\n\"**/.env\" = \"deny\"\n"
+	for name, items := range map[string][]library.Item{
+		"no items":      nil,
+		"commands only": {guard([]string{"rm -rf"}, nil)},
+	} {
+		t.Run(name, func(t *testing.T) {
+			tg := profileTarget(t, previous)
+			units, unsupported := export(t, tg, items)
+			if len(unsupported) != 0 {
+				t.Errorf("unsupported %+v", unsupported)
+			}
+			var profile []plan.Unit
+			for _, u := range units {
+				if u.Key == "permissions.promptstor" {
+					profile = append(profile, u)
+				}
+			}
+			if len(profile) != 1 || string(profile[0].Content) != bareProfile || len(profile[0].Items) != 0 {
+				t.Fatalf("units %s", describe(tg, units))
+			}
+			changes := diff(t, profile)
+			if len(changes) != 1 || changes[0].Blocked != "" {
+				t.Fatalf("changes %+v", changes)
+			}
+			if want := "default_permissions = \"promptstor\"\n\n" + bareProfile + "\n"; string(changes[0].After) != want {
+				t.Errorf("config %q", changes[0].After)
+			}
+		})
+	}
+	for _, config := range []string{
+		"model = \"example-model\"\n",
+		"default_permissions = \"promptstor\"\nsandbox_mode = \"read-only\"\n",
+		"default_permissions = \"promptstor\"\n\n[permissions.promptstor.network]\nenabled = true\n",
+	} {
+		tg := profileTarget(t, config)
+		if units, unsupported := export(t, tg, nil); len(units) != 0 || len(unsupported) != 0 {
+			t.Errorf("%q units %s unsupported %+v", config, describe(tg, units), unsupported)
 		}
 	}
 }
