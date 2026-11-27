@@ -1,6 +1,7 @@
 package library
 
 import (
+	"fmt"
 	"slices"
 
 	"go.yaml.in/yaml/v3"
@@ -70,6 +71,9 @@ func (it *Item) decodeField(f field) error {
 	}
 	if known, err := it.decodeKindField(f); known || err != nil {
 		return err
+	}
+	if l, err := layoutOf(it.Kind); err != nil || l.isYAML() {
+		return fmt.Errorf("unknown key %q on line %d", f.key.Value, f.key.Line)
 	}
 	return it.decodeMeta(f)
 }

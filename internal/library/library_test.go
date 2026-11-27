@@ -459,7 +459,7 @@ func TestSymlinksAreNeverFollowed(t *testing.T) {
 	_, err := LoadLayer(dir, LayerPersonal, LoadOptions{})
 	assertError(t, err, link, "symlink")
 
-	skill := Item{ID: NewID(), Kind: KindSkill, Name: "a"}
+	skill := Item{ID: "ps_00000000000000000000000002", Kind: KindSkill, Name: "a"}
 	if _, err := WriteItem(dir, skill); err == nil {
 		t.Error("wrote a skill folder holding a symlink")
 	}
@@ -606,6 +606,123 @@ func TestFileInPlaceOfItemFolderIsKept(t *testing.T) {
 		assertError(t, err, path)
 		if files := tree(t, dir); !reflect.DeepEqual(files, map[string]string{name: "keep"}) {
 			t.Errorf("%s left %v", kind, files)
+		}
+	}
+}
+
+func TestWriteRefusesDifferentIDAtSamePath(t *testing.T) {
+	const stored, other = "ps_00000000000000000000000001", "ps_00000000000000000000000002"
+	for name, test := range map[string]struct {
+		file, content string
+		kind          Kind
+	}{
+		"rule":    {"rules/a.md", document(stored, ""), KindRule},
+		"skill":   {"skills/a/SKILL.md", document(stored, ""), KindSkill},
+		"hook":    {"hooks/a.yaml", "promptstor:\n  id: " + stored + "\n", KindHook},
+		"no id":   {"rules/a.md", "body\n", KindRule},
+		"damaged": {"rules/a.md", "---\nunclosed\n", KindRule},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			path := put(t, dir, test.file, test.content)
+			item := Item{ID: other, Kind: test.kind, Name: "a"}
+			if test.kind != KindRule {
+				folder := strings.TrimSuffix(strings.TrimSuffix(test.file, "/SKILL.md"), ".yaml")
+				put(t, dir, folder+"/keep.sh", "x")
+				item.Files = map[string]File{"new.sh": {Data: []byte("y")}}
+			}
+			before := tree(t, dir)
+
+			_, err := WriteItem(dir, item)
+
+			switch name {
+			case "damaged":
+				assertError(t, err, path)
+			case "no id":
+				assertError(t, err, path, other)
+			default:
+				assertError(t, err, path, stored, other)
+			}
+			if after := tree(t, dir); !reflect.DeepEqual(after, before) {
+				t.Errorf("layer changed to %q", after)
+			}
+		})
+	}
+}
+
+func TestYAMLKindUnknownKeyRejected(t *testing.T) {
+	for _, name := range []string{"permissions/a.yaml", "hooks/a.yaml", "mcp/a.yaml"} {
+		dir := t.TempDir()
+		content := "promptstor:\n  id: ps_00000000000000000000000001\ndeny_path:\n  - x\n"
+		path := put(t, dir, name, content)
+
+		_, err := LoadLayer(dir, LayerPersonal, LoadOptions{AssignIDs: true})
+
+		assertError(t, err, path, "deny_path")
+		if got := read(t, path); got != content {
+			t.Errorf("%s changed to %q", name, got)
+		}
+	}
+	for _, kind := range []Kind{KindPermission, KindHook, KindMCP} {
+		dir := t.TempDir()
+		item := Item{ID: NewID(), Kind: kind, Name: "a", Meta: map[string]any{"deny_path": []string{"x"}}}
+
+		_, err := WriteItem(dir, item)
+
+		assertError(t, err, "deny_path")
+		if files := tree(t, dir); len(files) != 0 {
+			t.Errorf("%s left %v", kind, files)
+		}
+	}
+}
+
+func TestDotfilesInSkillFolderIgnored(t *testing.T) {
+	dir := t.TempDir()
+	put(t, dir, "skills/a/SKILL.md", document("ps_00000000000000000000000001", ""))
+	put(t, dir, "hooks/h.yaml", "promptstor:\n  id: ps_00000000000000000000000002\n")
+	hidden := []string{"skills/a/.env", "skills/a/.cache/data", "skills/a/sub/.env", "hooks/h/.env"}
+	for _, name := range hidden {
+		put(t, dir, name, "synthetic")
+	}
+	if err := os.Symlink(t.TempDir(), filepath.Join(dir, "skills", "a", ".linked")); err != nil {
+		t.Fatal(err)
+	}
+	assertHidden := func(step string) {
+		t.Helper()
+		for _, name := range hidden {
+			if got := read(t, filepath.Join(dir, filepath.FromSlash(name))); got != "synthetic" {
+				t.Errorf("%s changed %s", step, name)
+			}
+		}
+	}
+
+	items := load(t, dir)
+
+	out := t.TempDir()
+	for _, item := range items {
+		if len(item.Files) != 0 {
+			t.Errorf("%s loaded %d files", item.Name, len(item.Files))
+		}
+		write(t, out, item)
+		write(t, dir, item)
+	}
+	if copied := tree(t, out); len(copied) != 2 {
+		t.Errorf("copied %d files, want 2", len(copied))
+	}
+	assertHidden("write")
+	for _, item := range items {
+		if err := DeleteItem(dir, item); err != nil {
+			t.Fatal(err)
+		}
+	}
+	assertHidden("delete")
+	if left := load(t, dir); len(left) != 0 {
+		t.Errorf("items = %+v", left)
+	}
+	for _, key := range []string{".env", "sub/.env", ".cache/data"} {
+		item := Item{ID: NewID(), Kind: KindSkill, Name: "b", Files: map[string]File{key: {}}}
+		if _, err := WriteItem(t.TempDir(), item); err == nil {
+			t.Errorf("wrote %s", key)
 		}
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -47,7 +48,7 @@ func validateForWrite(l layout, it Item) error {
 	if err := validateKindData(l, it); err != nil {
 		return err
 	}
-	if err := validateMetaKeys(it); err != nil {
+	if err := validateMetaKeys(l, it); err != nil {
 		return err
 	}
 	return validateFileKeys(it)
@@ -83,9 +84,11 @@ func validateValues(server *MCPServer) error {
 	return nil
 }
 
-func validateMetaKeys(it Item) error {
-	reserved := append([]string{"name", "description", blockKey}, kindKeys(it.Kind)...)
-	for _, key := range reserved {
+func validateMetaKeys(l layout, it Item) error {
+	if l.isYAML() && len(it.Meta) > 0 {
+		return fmt.Errorf("unknown keys %q for a %s", slices.Sorted(maps.Keys(it.Meta)), it.Kind)
+	}
+	for _, key := range []string{"name", "description", blockKey} {
 		if _, found := it.Meta[key]; found {
 			return fmt.Errorf("meta key %q is reserved", key)
 		}
@@ -100,7 +103,7 @@ func validateFileKeys(it Item) error {
 			return fmt.Errorf("file %q is not a path inside the item folder", key)
 		case it.Kind == KindSkill && strings.EqualFold(key, skillFile):
 			return fmt.Errorf("file %q is the main file", key)
-		case isJunk(filepath.Base(key)):
+		case slices.ContainsFunc(strings.Split(key, "/"), isHidden):
 			return fmt.Errorf("file %q would be ignored on load", key)
 		}
 	}

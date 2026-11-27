@@ -16,6 +16,8 @@ type folder struct {
 	files, junk, dirs []string
 }
 
+func isHidden(name string) bool { return strings.HasPrefix(name, ".") }
+
 func isJunk(name string) bool {
 	return name == ".DS_Store" || (strings.HasPrefix(name, ".promptstor-") && strings.HasSuffix(name, ".tmp"))
 }
@@ -34,14 +36,19 @@ func scanFolder(root string) (folder, error) {
 			return err
 		}
 		switch {
+		case path != root && isHidden(entry.Name()):
+			if entry.Type().IsRegular() && isJunk(entry.Name()) {
+				found.junk = append(found.junk, path)
+			}
+			if entry.IsDir() {
+				return filepath.SkipDir
+			}
 		case entry.Type()&fs.ModeSymlink != 0:
 			return symlinkError(path)
 		case entry.IsDir():
 			found.dirs = append(found.dirs, path)
 		case !entry.Type().IsRegular():
 			return fmt.Errorf("%s is not a regular file", path)
-		case isJunk(entry.Name()):
-			found.junk = append(found.junk, path)
 		default:
 			relative, err := filepath.Rel(root, path)
 			if err != nil {

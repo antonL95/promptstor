@@ -54,6 +54,9 @@ func WriteItem(dir string, it Item) (string, error) {
 	if err := refuseLinked(dir, targets); err != nil {
 		return "", fmt.Errorf("write %s %q: %w", it.Kind, it.Name, err)
 	}
+	if err := refuseOtherItem(path, slug, it); err != nil {
+		return "", fmt.Errorf("write %s %q: %w", it.Kind, it.Name, err)
+	}
 	if l.folder {
 		if err := dropStale(dir, l, slug, it.Files); err != nil {
 			return "", fmt.Errorf("write %s %q: %w", it.Kind, it.Name, err)
@@ -80,6 +83,25 @@ func refuseLinked(dir string, targets []string) error {
 		if linked {
 			return fmt.Errorf("%w: %s", fsx.ErrSymlink, link)
 		}
+	}
+	return nil
+}
+
+func refuseOtherItem(path, slug string, it Item) error {
+	entry, err := fsx.Inspect(path)
+	if err != nil || !entry.Exists {
+		return err
+	}
+	existing, err := readFile(path)
+	if err != nil {
+		return err
+	}
+	stored, err := decodeItem(it.Kind, slug, existing.Data)
+	if err != nil {
+		return fmt.Errorf("%s exists and its id cannot be read: %w", path, err)
+	}
+	if stored.ID != it.ID {
+		return fmt.Errorf("%s holds id %q, not %q", path, stored.ID, it.ID)
 	}
 	return nil
 }
