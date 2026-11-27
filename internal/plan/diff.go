@@ -238,12 +238,14 @@ func checkLinks(c *FileChange, consented []string) string {
 		return err.Error()
 	}
 	reason := ReasonSymlinked + entry.LinkTarget
+	c.Link, c.LinkTarget = link, entry.LinkTarget
 	if link != c.Path {
 		return reason + " (parent directory " + link + ")"
 	}
 	if !slices.Contains(consented, c.Path) {
 		return reason
 	}
+	c.Link, c.LinkTarget = "", ""
 	c.ReplaceLink = true
 	return ""
 }

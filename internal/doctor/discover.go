@@ -2,10 +2,12 @@ package doctor
 
 import (
 	"fmt"
+	"path/filepath"
 	"slices"
 	"strings"
 
 	"github.com/antonL95/promptstor/internal/adapter"
+	"github.com/antonL95/promptstor/internal/fsx"
 )
 
 const (
@@ -69,7 +71,8 @@ func (d *doctor) choosePrimary(installed []string, counts map[string]int) (strin
 	}
 	def := 0
 	for i, tool := range installed {
-		if counts[tool] > counts[installed[def]] {
+		best := installed[def]
+		if counts[tool] > counts[best] || (counts[tool] == counts[best] && preferenceRank(tool) < preferenceRank(best)) {
 			def = i
 		}
 	}
@@ -82,6 +85,29 @@ func (d *doctor) choosePrimary(installed []string, counts map[string]int) (strin
 		return "", err
 	}
 	return installed[at], nil
+}
+
+var primaryPreference = []string{adapter.ClaudeCode, adapter.Codex, adapter.GeminiCLI, adapter.OpenCode, adapter.Antigravity, adapter.Cursor}
+
+func preferenceRank(tool string) int {
+	if at := slices.Index(primaryPreference, tool); at >= 0 {
+		return at
+	}
+	return len(primaryPreference)
+}
+
+func (d *doctor) ownAreas(found []detected) map[string][]string {
+	own := map[string][]string{}
+	for _, t := range found {
+		for _, path := range t.paths {
+			area := path
+			if entry, err := fsx.Inspect(path); err == nil && entry.Exists && !entry.IsDir && !entry.IsLink && filepath.Dir(path) != d.e.Env.Home {
+				area = filepath.Dir(path)
+			}
+			own[t.a.ID()] = append(own[t.a.ID()], area)
+		}
+	}
+	return own
 }
 
 func (d *doctor) chooseTools(found []detected, primary string) ([]string, error) {

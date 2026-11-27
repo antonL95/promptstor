@@ -47,7 +47,7 @@ Edit items in `~/.config/promptstor/library/` (see [library format](docs/library
 | `promptstor sync --dry-run` | Print the changes without writing them |
 | `promptstor sync` | Write the library into every selected tool |
 | `promptstor sync --project <dir>` | Also sync a repository |
-| `promptstor doctor` | Report drift and ask how to resolve it |
+| `promptstor doctor` | Report drift and ask how to resolve it. On the first run, `--json` together with `--yes` or `--dry-run` prints the setup plan as one JSON document. |
 | `promptstor doctor --check` | Report drift without asking. Exit code 0 is clean, 1 is drift, 2 is an error. Add `--json` for JSON. |
 | `promptstor external list` | Show the files another tool or script writes. Also `external add <path>` and `external remove <path>`. |
 | `promptstor status` | Show the last check, the library hash and the selected tools |

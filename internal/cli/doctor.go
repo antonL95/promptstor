@@ -2,6 +2,7 @@ package cli
 
 import (
 	"errors"
+	"io"
 
 	"github.com/spf13/cobra"
 
@@ -26,6 +27,9 @@ func newDoctorCommand(d Deps) *cobra.Command {
 			opt.Notifier = notify.Desktop{Run: d.run}
 			opt.Reconfigure = d.engineFor
 			p := doctor.LinePrompter(cmd.InOrStdin(), cmd.OutOrStdout(), d.TTY, opt.Yes)
+			if opt.JSON {
+				p = doctor.LinePrompter(cmd.InOrStdin(), io.Discard, d.TTY, true)
+			}
 			code, err := doctor.Run(e, p, cmd.OutOrStdout(), opt)
 			if err != nil && opt.Check {
 				return errors.Join(err, ExitCode(code))
@@ -43,7 +47,7 @@ func newDoctorCommand(d Deps) *cobra.Command {
 	cmd.Flags().BoolVar(&opt.Check, "check", false, "report drift without asking; exit 0 when clean, 1 on drift, 2 on error")
 	cmd.Flags().BoolVar(&opt.Notify, "notify", false, "send a notification with the check result")
 	cmd.Flags().BoolVar(&opt.Yes, "yes", false, "take the default answer to every question")
-	cmd.Flags().BoolVar(&opt.JSON, "json", false, "print the drift report as JSON")
+	cmd.Flags().BoolVar(&opt.JSON, "json", false, "print JSON instead of text and take the default answers; the first run also needs --yes or --dry-run")
 	cmd.Flags().StringVar(&opt.Primary, "primary", "", "use this tool as the primary on the first run")
 	cmd.Flags().StringSliceVar(&opt.Tools, "tools", nil, "keep these tools in sync on the first run")
 	cmd.Flags().StringVar(&opt.Project, "project", "", "also include the project in this directory")

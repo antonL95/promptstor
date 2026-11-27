@@ -39,6 +39,8 @@ type FileChange struct {
 	Retagged      []manifest.Entry
 	ReplaceLink   bool
 	SharedState   bool
+	Link          string
+	LinkTarget    string
 }
 
 type Options struct {

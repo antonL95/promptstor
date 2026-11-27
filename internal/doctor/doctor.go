@@ -1,6 +1,7 @@
 package doctor
 
 import (
+	"cmp"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -57,10 +58,13 @@ func Run(e engine.Engine, p Prompter, out io.Writer, opt Options) (int, error) {
 		return 2, err
 	}
 	var code int
-	if found {
+	switch {
+	case found:
 		code, err = d.review()
-	} else {
-		code, err = d.firstRun()
+	case opt.JSON:
+		code, err = d.firstRunJSON()
+	default:
+		code, err = d.firstRun(&firstRunState{})
 	}
 	if err != nil {
 		return 2, err
@@ -117,10 +121,13 @@ func (d *doctor) layerDir(layer library.Layer) (string, error) {
 }
 
 func (d *doctor) printNotes(p engine.Plan) {
+	noted := map[string]bool{}
 	for _, c := range p.Changes {
-		if strings.HasPrefix(c.Blocked, plan.ReasonSymlinked) {
-			d.w.printf(noteSymlinkFormat, c.Path)
+		if !strings.HasPrefix(c.Blocked, plan.ReasonSymlinked) || noted[c.Link] {
+			continue
 		}
+		noted[c.Link] = true
+		d.w.printf(noteSymlinkFormat, cmp.Or(c.Link, c.Path))
 	}
 }
 

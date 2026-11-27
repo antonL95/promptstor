@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/antonL95/promptstor/internal/config"
+	"github.com/antonL95/promptstor/internal/drift"
 	"github.com/antonL95/promptstor/internal/engine"
 	"github.com/antonL95/promptstor/internal/plan"
 )
@@ -16,20 +17,22 @@ const (
 )
 
 type firstRunState struct {
-	found    []detected
-	scopes   []scopeImports
-	primary  string
-	selected []string
-	cands    []*candidate
-	moves    []*move
-	adoption adoption
-	snapshot string
-	external []string
+	found      []detected
+	scopes     []scopeImports
+	primary    string
+	selected   []string
+	cands      []*candidate
+	moves      []*move
+	adoption   adoption
+	snapshot   string
+	external   []string
+	comparison []drift.Finding
+	plan       engine.Plan
 }
 
-func (d *doctor) firstRun() (int, error) {
+func (d *doctor) firstRun(s *firstRunState) (int, error) {
 	d.w.printf("PromptStor doctor: first run\n\n")
-	s := &firstRunState{found: d.detect()}
+	s.found = d.detect()
 	d.printDetected(s.found)
 	installed := installedTools(s.found)
 	if len(installed) == 0 {
@@ -56,7 +59,7 @@ func (d *doctor) discover(s *firstRunState) error {
 		return err
 	}
 	s.scopes = scopes
-	if s.primary, err = d.choosePrimary(installed, itemCounts(scopes)); err != nil {
+	if s.primary, err = d.choosePrimary(installed, itemCounts(scopes, d.ownAreas(s.found))); err != nil {
 		return err
 	}
 	s.selected, err = d.chooseTools(s.found, s.primary)
@@ -64,7 +67,7 @@ func (d *doctor) discover(s *firstRunState) error {
 }
 
 func (d *doctor) compareAndPull(s *firstRunState) error {
-	d.printComparison(s.scopes)
+	s.comparison = d.printComparison(s.scopes)
 	cands, err := d.pull(s.scopes, s.primary, s.selected)
 	s.cands = cands
 	return err
@@ -137,6 +140,7 @@ func (d *doctor) planAndApply(s *firstRunState, cfg config.Config) (int, error) 
 	if err != nil {
 		return 0, err
 	}
+	s.plan = p
 	if err := d.printPreview(s, p); err != nil {
 		return 0, err
 	}

@@ -33,15 +33,7 @@ func Plan(out io.Writer, p engine.Plan, diffs bool) (int, error) {
 			}
 		}
 	}
-	for _, c := range p.Changes {
-		if c.Blocked != "" {
-			if blocked == 0 {
-				w.printf("blocked:\n")
-			}
-			blocked++
-			w.printf("  %s: %s\n", c.Path, c.Blocked)
-		}
-	}
+	blocked = blockedList(w, p.Changes)
 	if len(p.Violations) > 0 {
 		w.printf("locked:\n")
 		for _, v := range p.Violations {
@@ -54,6 +46,41 @@ func Plan(out io.Writer, p engine.Plan, diffs bool) (int, error) {
 		return 0, fmt.Errorf("print: %w", w.err)
 	}
 	return blocked + len(p.Violations) + withheld, nil
+}
+
+func blockedList(w *writer, changes []plan.FileChange) int {
+	links := map[string]int{}
+	for _, c := range changes {
+		if c.Blocked != "" && c.Link != "" {
+			links[c.Link]++
+		}
+	}
+	blocked := 0
+	for _, c := range changes {
+		if c.Blocked == "" {
+			continue
+		}
+		if blocked == 0 {
+			w.printf("blocked:\n")
+		}
+		blocked++
+		count, grouped := links[c.Link]
+		switch {
+		case c.Link == "":
+			w.printf("  %s: %s\n", c.Path, c.Blocked)
+		case grouped:
+			w.printf("  %s (symlink to %s): %d %s\n", c.Link, c.LinkTarget, count, plural(count, "file", "files"))
+			delete(links, c.Link)
+		}
+	}
+	return blocked
+}
+
+func plural(n int, one, many string) string {
+	if n == 1 {
+		return one
+	}
+	return many
 }
 
 func unsupported(w *writer, report []adapter.Unsupported) int {
